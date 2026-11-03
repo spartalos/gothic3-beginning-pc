@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-libGDX PC port of the J2ME game *Gothic 3: The Beginning*. Private repo `spartalos/gothic3-mobile-pc` (`main`). Overview: `README.md`; details in `docs/`.
+libGDX PC port of the J2ME game *Gothic 3: The Beginning*. Public repo `spartalos/gothic3-beginning-pc` (`main`, MIT). The old private repo with the pre-public history (it contains game files) is remote `private` / branch `private-history`: never push it to `origin`. Overview: `README.md`; details in `docs/`.
 
 ## Modules
 - `midp/`: desktop MIDP implementation (`javax.microedition.*`) and `gothic3.platform` (RenderConfig, FramePacer).

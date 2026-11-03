@@ -2,6 +2,8 @@
 
 A PC port of the 2008 J2ME game *Gothic 3: The Beginning*, built from renamed and decompiled sources (package `g3`). It runs on a desktop MIDP implementation (`midp/`) and is launched through a libGDX launcher (`desktop/`).
 
+**Trailer:** https://youtu.be/5WvNaz-iCe4 (the original 2D view next to the optional 3D view; footage shows the original game's art, so it is hosted outside this repository).
+
 ## Playing: you need your own copy of the game
 
 This port does not contain the game. It builds it on your computer from your own copy of the original mobile game:
@@ -46,6 +48,6 @@ This repository contains no code or assets of the original game. You need your o
 (SHA-256 `0f02bc1b70c2492b0f08b0d7ef5a3ab6c71d01608a8363b52c77678d3cc6cb7f`, 416,549 bytes). Unofficial fan project, not affiliated with or endorsed by
 THQ Nordic, Piranha Bytes or HandyGames. Gothic is a trademark of its respective owners.
 
-Third-party components and their licences: see `NOTICE`. The licence of this project's own code has not been chosen yet.
+Third-party components and their licences: see `NOTICE`. This project's own code is MIT licensed (see `LICENSE`); the licence does not cover the original game.
 
 Screenshots of the game are not part of the repository (they show the original art), so the docs describe visual results in words.

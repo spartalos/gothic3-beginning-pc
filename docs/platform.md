@@ -27,7 +27,7 @@ game can be loaded the same way (point `g3.game.classpath` at its classes).
 Gradle `run` uses the repo root as working dir.
 
 ## Building & releases
-Version: `version=` in `gradle.properties` (single source; currently 0.1.1). Needs JDK 17+ (CI uses Temurin 21; jpackage ships with the JDK).
+Version: `version=` in `gradle.properties` (single source; currently 0.2.0). Needs JDK 17+ (CI uses Temurin 21; jpackage ships with the JDK).
 ```
 ./gradlew build                    # compile + tests, all modules
 ./gradlew :desktop:run             # run from the checkout (working dir = repo root)

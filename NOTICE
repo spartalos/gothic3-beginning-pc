@@ -6,7 +6,8 @@ Gothic is a trademark of its respective owners. This repository and the released
 original game: the player supplies their own copy of Gothic3-TheBeginning_s40v3a.jar (see docs/byo-jar.md).
 
 The licence of this project's own code (midp/, port/, desktop/, buildtools/, game-patches/ as far as they are our own work, docs/,
-scripts/, game/src/port, game/src/main/resources/{render3d,post}) has not been chosen yet.
+scripts/, game/src/port, game/src/main/resources/{render3d,post}) is the MIT License (see LICENSE). It does not
+cover the original game, which is not part of this project.
 
 Third-party components
 ----------------------
