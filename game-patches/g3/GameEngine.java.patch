@@ -1,0 +1,1177 @@
+--- a/g3/GameEngine.java
++++ b/g3/GameEngine.java
+@@ -2,0 +3,3 @@
++// PORT: all resource loads go through gothic3.platform.Platform.openResource, which returns fully
++// buffered streams like a J2ME handset (full reads, exact skip); JDK jar streams do not.
++
+@@ -184,0 +188,7 @@
++   // PORT: virtual 240x320 gameplay view (see updateCamera)
++   static final int GAMEPLAY_VIEW_W = 240;
++   static final int GAMEPLAY_VIEW_H = 320;
++   static int logicCamX;
++   static int logicCamY;
++   static int logicCamTargetX;
++   static int logicCamTargetY;
+@@ -279,0 +290,6 @@
++   // PORT: widescreen. Widgets that would stretch absurdly at 640 px are capped and centred.
++   static final int MAX_BOX_W = 320;        // message box / dialogue text
++   static final int MAX_TARGET_BAR_W = 240; // target bar / interact label
++   static final int MAX_QUICKSLOT_GAP = 12;
++   static int msgBoxX = 0;
++   static int msgBoxW = 0;
+@@ -384,2 +400,2 @@
+-            if ((System.currentTimeMillis() >= splashStartTime + 3000L || splashStartTime == 0L) && splashIndex < 2) {
+-               splashStartTime = System.currentTimeMillis();
++            if ((gothic3.port.Port.millis() >= splashStartTime + 3000L || splashStartTime == 0L) && splashIndex < 2) { // PORT: game clock (virtual in deterministic mode)
++               splashStartTime = gothic3.port.Port.millis(); // PORT: game clock (virtual in deterministic mode)
+@@ -397 +413 @@
+-                  new Thread(loaderTask).start();
++                  gothic3.port.Port.startLoader(loaderTask); // PORT: synchronous in deterministic mode
+@@ -404 +420 @@
+-                  loadDoneHoldUntil = System.currentTimeMillis() + 1000L;
++                  loadDoneHoldUntil = gothic3.port.Port.millis() + 1000L; // PORT: game clock (virtual in deterministic mode)
+@@ -407 +423 @@
+-               if (loadDoneHoldUntil < System.currentTimeMillis()) {
++               if (loadDoneHoldUntil < gothic3.port.Port.millis()) { // PORT: game clock (virtual in deterministic mode)
+@@ -410 +426,5 @@
+-                  Gothic3Midlet.showMenu(17);
++                  if (gothic3.platform.StartupPrefs.active && gothic3.platform.StartupPrefs.done) { // PORT: questions answered in an earlier run: apply the saved sound answer exactly as answering would (9 = sound on, 10 = off)
++                     Gothic3Midlet.executeMenuAction(gothic3.platform.StartupPrefs.soundEnabled ? 9 : 10);
++                  } else {
++                     Gothic3Midlet.showMenu(17);
++                  }
+@@ -415,2 +435,2 @@
+-            if (System.currentTimeMillis() >= splashStartTime + 3000L || splashStartTime == 0L) {
+-               splashStartTime = System.currentTimeMillis();
++            if (gothic3.port.Port.millis() >= splashStartTime + 3000L || splashStartTime == 0L) { // PORT: game clock (virtual in deterministic mode)
++               splashStartTime = gothic3.port.Port.millis(); // PORT: game clock (virtual in deterministic mode)
+@@ -698 +718 @@
+-      int var17 = (var22 & 256) == 256;
++      boolean var17b = (var22 & 256) == 256; // DECOMP-FIX: boolean/int slot reuse
+@@ -701 +721 @@
+-      if (var17) {
++      if (var17b) {
+@@ -704 +724 @@
+-         var17 = var6 + textAreaRects[var3 * 11 + 8];
++         int var17 = var6 + textAreaRects[var3 * 11 + 8];
+@@ -728 +748 @@
+-            var17 = var5.getColor();
++            int var17 = var5.getColor();
+@@ -741 +761 @@
+-            var17 = var5.getColor();
++            int var17 = var5.getColor();
+@@ -821 +841 @@
+-         int var10 = (var11 & 16) == 16;
++         boolean var10b = (var11 & 16) == 16; // DECOMP-FIX: boolean/int slot reuse
+@@ -849 +869 @@
+-            if (var10) {
++            if (var10b) {
+@@ -851 +871 @@
+-               var10 = textAreaScroll[var1 * 3 + 2];
++               int var10 = textAreaScroll[var1 * 3 + 2];
+@@ -874 +894 @@
+-         } else if (var10) {
++         } else if (var10b) {
+@@ -922 +942 @@
+-            var10 = var8;
++            int var10 = var8;
+@@ -965 +985 @@
+-         var0 = new DataInputStream(Gothic3Midlet.instance.getClass().getResourceAsStream("/a"));
++         var0 = new DataInputStream(gothic3.platform.Platform.openResource("/a"));
+@@ -1350,3 +1370,3 @@
+-         var4 = (byte)(navGrid[var3 * GameWorld.mapWidth * 2 * 3 + var2 * 3 + 2] >> 16 & 0xFF);
+-         var2 = (byte)(navGrid[var3 * GameWorld.mapWidth * 2 * 3 + var2 * 3 + 2] >> 24 & 0xFF) - npcs[var4][24];
+-         if (var4 == var0 || var2 < 0) {
++         int var4i = (byte)(navGrid[var3 * GameWorld.mapWidth * 2 * 3 + var2 * 3 + 2] >> 16 & 0xFF); // DECOMP-FIX: boolean param slot reused as int
++         var2 = (byte)(navGrid[var3 * GameWorld.mapWidth * 2 * 3 + var2 * 3 + 2] >> 24 & 0xFF) - npcs[var4i][24];
++         if (var4i == var0 || var2 < 0) {
+@@ -1656,0 +1677,124 @@
++   // PORT: 3D capture area (docs/render3d.md). While portExtraOn, the world pass also draws the entities of cells outside the game's own
++   // 2D cull window [portWx0,portWx1) x [portWy0,portWy1) (the 3D camera sees further). Those "extra" entities must not change any game
++   // state (bit-identical to the 2D view): no object animation advance, scratch statics / RNG restored around each draw, own row restored
++   // after the pass, and the sort chain links of the window entities are put back to exactly what the 2D pass leaves behind.
++   static boolean portExtraOn;
++   static int portWx0, portWy0, portWx1, portWy1;
++   private static final int[] portExt = new int[4];
++   private static int[] portWinIds = new int[256], portWinLinks = new int[256], portExtraIds = new int[256];
++   private static int[][] portExtraRows = new int[256][];
++   private static int portWinN, portExtraN;
++
++   static boolean portExtra(int[] var0) {
++      if (!portExtraOn) {
++         return false;
++      }
++
++      int var1 = (short)(var0[0] & 65535);
++      int var2 = (short)((var0[0] & -65536) >> 16);
++      return var1 < portWx0 || var1 >= portWx1 || var2 < portWy0 || var2 >= portWy1;
++   }
++
++   // PORT: object animation of the extra entities. The game advances it inside the draw (updateObjectAnim) and the extra area must not
++   // touch game state, so the animation word [10] of such an entity is kept in a render-side table {lastRealWord, ownWord, lastTick, shownFrame}
++   // and advanced there (updateObjectAnim runs on the row with the own word swapped in and the real word is put straight back). It advances once
++   // per canonical render (not in in-between frames: those show the frame of their canonical frame) and resyncs when logic changes the real word.
++   // The table is excluded from StateHasher.
++   private static final java.util.IdentityHashMap<int[], int[]> portAnim = new java.util.IdentityHashMap<>();
++   private static int[][] portAnimEnt;
++   private static int portAnimMap;
++
++   private static int portExtraAnimFrame(int[] var0) {
++      int var1 = player != null && player.length > 11 ? player[11] : -1;
++      if (portAnimEnt != GameWorld.entities || portAnimMap != var1) {
++         portAnim.clear();
++         portAnimEnt = GameWorld.entities;
++         portAnimMap = var1;
++      }
++
++      int var2 = var0[10];
++      int[] var3 = portAnim.get(var0);
++      if (var3 == null) {
++         var3 = new int[] {var2, var2, -1, (short)(var2 & 65535)};
++         portAnim.put(var0, var3);
++      } else if (var3[0] != var2) {
++         var3[0] = var2;
++         var3[1] = var2;
++         var3[3] = (short)(var2 & 65535);
++      }
++
++      if (!portIntermediateFrame && var3[2] != tickCounter) {
++         var3[2] = tickCounter;
++         var3[3] = (short)(var3[1] & 65535);
++         var0[10] = var3[1];
++         updateObjectAnim(var0);
++         var3[1] = var0[10];
++         var0[10] = var2;
++      }
++
++      return var3[3];
++   }
++
++   static void portDrawEntity(int[] var0, boolean var1, Graphics var2) {
++      if (portExtra(var0)) {
++         gothic3.port.RenderMutations.guardBegin();
++         drawEntity(var0, var1, var2);
++         gothic3.port.RenderMutations.guardEnd();
++      } else {
++         drawEntity(var0, var1, var2);
++      }
++   }
++
++   // sort key for the draw order walk: for extra entities the scratch statics (scratchPosSort) are put back
++   static int portSortY(int[] var0) {
++      if (portExtra(var0)) {
++         gothic3.port.RenderMutations.guardBegin();
++         int var1 = GameWorld.getSortY(var0);
++         gothic3.port.RenderMutations.guardEnd();
++         return var1;
++      } else {
++         return GameWorld.getSortY(var0);
++      }
++   }
++
++   private static void portNoteWindow(int var0) {
++      if (portWinN == portWinIds.length) {
++         portWinIds = java.util.Arrays.copyOf(portWinIds, portWinN * 2);
++         portWinLinks = java.util.Arrays.copyOf(portWinLinks, portWinN * 2);
++      }
++
++      portWinIds[portWinN++] = var0;
++   }
++
++   private static void portNoteExtra(int var0) {
++      if (portExtraN == portExtraIds.length) {
++         portExtraIds = java.util.Arrays.copyOf(portExtraIds, portExtraN * 2);
++         portExtraRows = java.util.Arrays.copyOf(portExtraRows, portExtraN * 2);
++      }
++
++      int[] var1 = GameWorld.entities[var0];
++      int[] var2 = portExtraRows[portExtraN];
++      if (var2 == null || var2.length != var1.length) {
++         var2 = portExtraRows[portExtraN] = new int[var1.length];
++      }
++
++      System.arraycopy(var1, 0, var2, 0, var1.length);
++      portExtraIds[portExtraN++] = var0;
++   }
++
++   private static void portRestoreExtra() {
++      for (int var0 = 0; var0 < portExtraN; var0++) {
++         int[] var1 = GameWorld.entities[portExtraIds[var0]];
++         System.arraycopy(portExtraRows[var0], 0, var1, 0, var1.length);
++      }
++
++      for (int var2 = 0; var2 < portWinN; var2++) {
++         int[] var3 = GameWorld.entities[portWinIds[var2]];
++         var3[1] = var3[1] & 65535 | portWinLinks[var2] & -65536;
++      }
++
++      portExtraN = 0;
++      portWinN = 0;
++      portExtraOn = false;
++   }
++
+@@ -1657,0 +1802 @@
++      gothic3.platform.scene3d.DrawCapture.pass(var1 ? gothic3.platform.scene3d.Scene3D.PASS_FLAT : gothic3.platform.scene3d.Scene3D.PASS_UPRIGHT); // PORT
+@@ -1690 +1835,5 @@
+-               updateObjectAnim(var0);
++               if (!portExtra(var0)) { // PORT: not for the extra 3D capture area
++                  updateObjectAnim(var0);
++               } else {
++                  var8 = portExtraAnimFrame(var0); // PORT: render-side clock for the extra area, game state untouched
++               }
+@@ -1747,0 +1897 @@
++      gothic3.platform.scene3d.DrawCapture.pass(gothic3.platform.scene3d.Scene3D.PASS_FLAT); // PORT
+@@ -1764,0 +1915 @@
++      gothic3.platform.scene3d.DrawCapture.pass(gothic3.platform.scene3d.DrawCapture.PASS_IGNORE); // PORT: 3D builds tile geometry from the grid
+@@ -1825,0 +1977 @@
++      boolean port3d = false; // PORT: this frame's world pass is captured for the 3D renderer instead of rasterised
+@@ -1868,0 +2021,15 @@
++         // PORT: the 3D camera sees further than the 2D window: the extended cell rect (portExt) is drawn too, see portExtra.
++         portExtraOn = false;
++         portWinN = 0;
++         portExtraN = 0;
++         if (gothic3.platform.RenderConfig.view3d()) {
++            gothic3.port.Render3DHook.extendWindow(var14, var13, var12, var11, portExt); // PORT
++            if (portExt[0] < var14 || portExt[1] < var13 || portExt[2] > var12 || portExt[3] > var11) {
++               portExtraOn = true;
++               portWx0 = var14;
++               portWy0 = var13;
++               portWx1 = var12;
++               portWy1 = var11;
++            }
++         }
++
+@@ -1873,0 +2041 @@
++         port3d = gothic3.port.Render3DHook.begin(var0); // PORT
+@@ -1881,0 +2050,4 @@
++                  if (portExtraOn) {
++                     portNoteWindow(var2); // PORT
++                  }
++
+@@ -1904,0 +2077,46 @@
++         if (portExtraOn) { // PORT: add the entities of the extra capture area to the sorted chains (window chains stay as the 2D pass built them)
++            gothic3.port.RenderMutations.guardPrepare();
++            for (int var27 = 0; var27 < portWinN; var27++) {
++               portWinLinks[var27] = GameWorld.entities[portWinIds[var27]][1];
++            }
++
++            int var28 = -1;
++            int var29 = -1;
++            for (int var30 = portExt[1]; var30 < portExt[3]; var30++) {
++               boolean var31 = var30 >= var13 && var30 < var11;
++               for (int var32 = portExt[0]; var32 < portExt[2]; var32++) {
++                  if (var31 && var32 >= var14 && var32 < var12) {
++                     var32 = var12 - 1;
++                     continue;
++                  }
++
++                  for (int var33 = GameWorld.cellHeads[var30][var32]; var33 != -1; var33 = (short)(GameWorld.entities[var33][1] & 65535)) {
++                     portNoteExtra(var33);
++                     gothic3.port.RenderMutations.guardBegin();
++                     GameWorld.entities[var33][1] = GameWorld.entities[var33][1] & 65535;
++                     GameWorld.entities[var33][1] = GameWorld.entities[var33][1] | -65536;
++                     if ((GameWorld.entities[var33][3] & 4096) != 0 && GameWorld.entities[var33][6] != 0) {
++                        if (insertSortedChecked(var9, var33, var28)) {
++                           var9 = var33;
++                        }
++
++                        var28 = var33;
++                     } else {
++                        if (insertSortedChecked(var10, var33, var29)) {
++                           var10 = var33;
++                        }
++
++                        var29 = var33;
++                     }
++
++                     gothic3.port.RenderMutations.guardEnd();
++                  }
++               }
++            }
++
++            var14 = portExt[0];
++            var13 = portExt[1];
++            var12 = portExt[2];
++            var11 = portExt[3];
++         }
++
+@@ -1906 +2124 @@
+-            drawEntity(GameWorld.entities[var19], true, var0);
++            portDrawEntity(GameWorld.entities[var19], true, var0);
+@@ -1920 +2138 @@
+-            var21 = GameWorld.getSortY(GameWorld.entities[var23]);
++            var21 = portSortY(GameWorld.entities[var23]);
+@@ -1925 +2143 @@
+-               drawEntity(GameWorld.entities[var23], false, var0);
++               portDrawEntity(GameWorld.entities[var23], false, var0);
+@@ -1930 +2148 @@
+-                  var21 = GameWorld.getSortY(GameWorld.entities[var23]);
++                  var21 = portSortY(GameWorld.entities[var23]);
+@@ -1944 +2162 @@
+-            drawEntity(GameWorld.entities[var23], false, var0);
++            portDrawEntity(GameWorld.entities[var23], false, var0);
+@@ -1949,2 +2167,2 @@
+-            drawEntity(GameWorld.entities[var22], true, var0);
+-            drawEntity(GameWorld.entities[var22], false, var0);
++            portDrawEntity(GameWorld.entities[var22], true, var0);
++            portDrawEntity(GameWorld.entities[var22], false, var0);
+@@ -1951,0 +2170,6 @@
++
++         if (portExtraOn) {
++            portRestoreExtra(); // PORT
++         }
++      } else if (dialogueOpen && player != null && player[11] != 0) {
++         gothic3.port.Render3DHook.keepLastScene(); // PORT: dialogue over the (frozen) 3D scene
+@@ -1953,0 +2178,4 @@
++      if (port3d) {
++         gothic3.platform.scene3d.DrawCapture.resume(gothic3.platform.scene3d.Scene3D.PASS_OVERLAY); // PORT: icons over heads stay in the world
++      }
++
+@@ -1959,0 +2188,4 @@
++         if (port3d) {
++            gothic3.platform.scene3d.DrawCapture.suspend(); // PORT: HUD below is drawn normally
++         }
++
+@@ -1972,0 +2205,4 @@
++      if (port3d) {
++         gothic3.port.Render3DHook.finish(); // PORT
++      }
++
+@@ -1999,0 +2236,9 @@
++   // PORT: widescreen "void" fill. Cells outside the map used to be plain black. On non-classic sizes they show the nearest
++   // edge tile, faded towards black with distance from the map (a function of the cell only, so the incremental bgBuffer
++   // redraw and the wrap-around buffer stay consistent). Currently switched off: the void is plain black at every size.
++   static boolean voidFillEnabled() {
++      return false; // PORT: disabled, outside the map stays plain black like the original (the faded edge-tile smear was unwanted)
++   }
++
++   private static final int[] VOID_ALPHA = {0x90, 0xB0, 0xC8, 0xDC, 0xEC, 0xF8}; // black overlay alpha by distance (1..>=6 tiles)
++
+@@ -2001,0 +2247,3 @@
++      boolean voidFill = voidFillEnabled();
++      int mapW = GameWorld.tileGrid[0].length, mapH = GameWorld.tileGrid.length;
++      int[] voidOverlay = null;
+@@ -2005,2 +2253,2 @@
+-            int var11 = var13 % bgTilesW * GameWorld.tileWidth;
+-            int var10 = var12 % bgTilesH * GameWorld.tileHeight;
++            int var11 = Math.floorMod(var13, bgTilesW) * GameWorld.tileWidth; // PORT: floorMod, negative cells (view wider than map) wrapped to the wrong spot
++            int var10 = Math.floorMod(var12, bgTilesH) * GameWorld.tileHeight;
+@@ -2008 +2256,13 @@
+-            if (var13 >= 0 && var13 < GameWorld.tileGrid[0].length && var12 >= 0 && var12 < GameWorld.tileGrid.length) {
++            int gx = var13, gy = var12;
++            int voidDist = 0;
++            if (gx < 0 || gx >= mapW || gy < 0 || gy >= mapH) {
++               if (!voidFill) {
++                  continue;
++               }
++
++               gx = gx < 0 ? 0 : gx >= mapW ? mapW - 1 : gx;
++               gy = gy < 0 ? 0 : gy >= mapH ? mapH - 1 : gy;
++               voidDist = Math.max(Math.abs(var13 - gx), Math.abs(var12 - gy));
++            }
++
++            {
+@@ -2012,2 +2272,2 @@
+-                  byte var7 = (byte)(GameWorld.tileGrid[var12][var13] >> (var8 << 4) & 0xFF);
+-                  byte var6 = (byte)(GameWorld.tileGrid[var12][var13] >> 8 + (var8 << 4) & 15);
++                  byte var7 = (byte)(GameWorld.tileGrid[gy][gx] >> (var8 << 4) & 0xFF);
++                  byte var6 = (byte)(GameWorld.tileGrid[gy][gx] >> 8 + (var8 << 4) & 15);
+@@ -2017,2 +2277,2 @@
+-                     var0 = var7 % var5 * GameWorld.tileWidth;
+-                     var5 = var7 / var5 % var4 * GameWorld.tileHeight;
++                     int srcX = var7 % var5 * GameWorld.tileWidth;
++                     int srcY = var7 / var5 % var4 * GameWorld.tileHeight;
+@@ -2024 +2284 @@
+-                     bgGraphics.drawRegion(images[var9][var4], var0, var5, GameWorld.tileWidth, GameWorld.tileHeight, var6, var11, var10, 20);
++                     bgGraphics.drawRegion(images[var9][var4], srcX, srcY, GameWorld.tileWidth, GameWorld.tileHeight, var6, var11, var10, 20);
+@@ -2029,0 +2290,10 @@
++
++            if (voidDist > 0) {
++               int n = GameWorld.tileWidth * GameWorld.tileHeight;
++               if (voidOverlay == null || voidOverlay.length != n) {
++                  voidOverlay = new int[n];
++               }
++
++               java.util.Arrays.fill(voidOverlay, VOID_ALPHA[Math.min(voidDist, VOID_ALPHA.length) - 1] << 24);
++               bgGraphics.drawRGB(voidOverlay, 0, GameWorld.tileWidth, var11, var10, GameWorld.tileWidth, GameWorld.tileHeight, true);
++            }
+@@ -2089,2 +2359,2 @@
+-      int var4 = -bgTileX % bgTilesW * GameWorld.tileWidth;
+-      int var3 = -bgTileY % bgTilesH * GameWorld.tileHeight;
++      int var4 = -Math.floorMod(bgTileX, bgTilesW) * GameWorld.tileWidth; // PORT: floorMod (negative tile index)
++      int var3 = -Math.floorMod(bgTileY, bgTilesH) * GameWorld.tileHeight;
+@@ -2133,0 +2404,3 @@
++      if (quickslotGapX > MAX_QUICKSLOT_GAP) { // PORT: keep the ring compact on wide screens
++         quickslotGapX = MAX_QUICKSLOT_GAP;
++      }
+@@ -2391,0 +2665,4 @@
++      if (var1 > MAX_TARGET_BAR_W) { // PORT: capped and centred on wide screens
++         var1 = MAX_TARGET_BAR_W;
++         var2 = screenWidth - var1 >> 1;
++      }
+@@ -2396 +2673 @@
+-      targetBarW = screenWidth - (var2 << 1);
++      targetBarW = var1;
+@@ -2450,0 +2728 @@
++         gothic3.platform.scene3d.DrawCapture.markerAnchor(var4 - cameraX, var3 - cameraY, false); // PORT
+@@ -2454,0 +2733 @@
++         gothic3.platform.scene3d.DrawCapture.markerEnd(); // PORT
+@@ -2465,0 +2745,4 @@
++      if (var1 > MAX_TARGET_BAR_W) { // PORT: capped and centred on wide screens
++         var1 = MAX_TARGET_BAR_W;
++         var4 = screenWidth - var1 >> 1;
++      }
+@@ -2718,0 +3002 @@
++            gothic3.platform.scene3d.DrawCapture.markerAnchor(var1, var3, true); // PORT
+@@ -2719,0 +3004 @@
++            gothic3.platform.scene3d.DrawCapture.markerEnd(); // PORT
+@@ -2730,0 +3016 @@
++            gothic3.platform.scene3d.DrawCapture.markerAnchor(var8 - cameraX, var7 - cameraY, true); // PORT
+@@ -2731,0 +3018 @@
++            gothic3.platform.scene3d.DrawCapture.markerEnd(); // PORT
+@@ -2742,0 +3030,4 @@
++         if (var2 > MAX_TARGET_BAR_W) { // PORT: capped and centred (see initInteractLabel)
++            var2 = MAX_TARGET_BAR_W;
++            var5 = screenWidth - var2 >> 1;
++         }
+@@ -3045,3 +3336,3 @@
+-         var0 = GameWorld.getItemValue(GameWorld.entities[var5]) * var6;
+-         if (var0 % 2 != 0) {
+-            var0++;
++         int var0i = GameWorld.getItemValue(GameWorld.entities[var5]) * var6; // DECOMP-FIX: boolean param slot reused as int
++         if (var0i % 2 != 0) {
++            var0i++;
+@@ -3050,2 +3341,2 @@
+-         var0 = var0 * 40 / 100;
+-         addGold(var0);
++         var0i = var0i * 40 / 100;
++         addGold(var0i);
+@@ -3233 +3524 @@
+-               var3 = findFreeInstance(consumables);
++               int var3i = findFreeInstance(consumables); // DECOMP-FIX: boolean param slot reused as int (var3i)
+@@ -3235,3 +3526,3 @@
+-               if (var3 >= 0 && var6 >= 0) {
+-                  System.arraycopy(inventory[var0][var1], 0, consumables[var3], 0, inventory[var0][var1].length);
+-                  consumables[var3][6] = var2;
++               if (var3i >= 0 && var6 >= 0) {
++                  System.arraycopy(inventory[var0][var1], 0, consumables[var3i], 0, inventory[var0][var1].length);
++                  consumables[var3i][6] = var2;
+@@ -3240 +3531 @@
+-                  GameWorld.entities[var6] = consumables[var3];
++                  GameWorld.entities[var6] = consumables[var3i];
+@@ -3244 +3535 @@
+-                  GameWorld.entities[var6][2] = GameWorld.entities[var6][2] | (short)var3 << 16 & -65536;
++                  GameWorld.entities[var6][2] = GameWorld.entities[var6][2] | (short)var3i << 16 & -65536;
+@@ -3248 +3539 @@
+-                     GameWorld.setEntityTile(consumables[var3], (short)(player[0] & 65535), (short)((player[0] & -65536) >> 16));
++                     GameWorld.setEntityTile(consumables[var3i], (short)(player[0] & 65535), (short)((player[0] & -65536) >> 16));
+@@ -3287 +3578 @@
+-         var3 = (short)var0 & '\uffff' | (short)var1 << 16 & -65536;
++         int var3x = (short)var0 & '\uffff' | (short)var1 << 16 & -65536; // DECOMP-FIX: boolean param slot reused as int (var3x)
+@@ -3290 +3581 @@
+-            if (var3 == player[31 + var13]) {
++            if (var3x == player[31 + var13]) {
+@@ -3303 +3594 @@
+-         var3 = GameWorld.cellHeads[var7][var8];
++         int var3x = GameWorld.cellHeads[var7][var8];
+@@ -3306,4 +3597,4 @@
+-         while (var3 != -1) {
+-            var8 = GameWorld.entities[var3][3];
+-            if ((var8 & 10176) > 0 && var3 != var6) {
+-               GameWorld.entities[var3][3] = GameWorld.entities[var3][3] | 524288;
++         while (var3x != -1) {
++            var8 = GameWorld.entities[var3x][3];
++            if ((var8 & 10176) > 0 && var3x != var6) {
++               GameWorld.entities[var3x][3] = GameWorld.entities[var3x][3] | 524288;
+@@ -3314 +3605 @@
+-            var3 = (short)(GameWorld.entities[var3][1] & 65535);
++            var3x = (short)(GameWorld.entities[var3x][1] & 65535);
+@@ -3380 +3671 @@
+-            short var6 = (short)((affixScratch[var9] & -65536) >> 16);
++            int var6 = (short)((affixScratch[var9] & -65536) >> 16); // DECOMP-FIX: narrow->int
+@@ -3672,3 +3963,3 @@
+-               var2 = (short)(var4[var13] & 65535) + var1;
+-               if (var2 > var0 && var0 >= 0 && var10) {
+-                  var2 = var0;
++               int var2i = (short)(var4[var13] & 65535) + var1;
++               if (var2i > var0 && var0 >= 0 && var10) {
++                  var2i = var0;
+@@ -3677,2 +3968,2 @@
+-               if (var2 <= 0 && var6) {
+-                  var2 = 1;
++               if (var2i <= 0 && var6) {
++                  var2i = 1;
+@@ -3682 +3973 @@
+-               var4[var13] |= (short)var2 & '\uffff';
++               var4[var13] |= (short)var2i & '\uffff';
+@@ -3686,3 +3977,3 @@
+-               var2 = (short)((var4[var13] & -65536) >> 16) + var1;
+-               if (var2 > var0 && var0 >= 0 && var10) {
+-                  var2 = var0;
++               int var2i = (short)((var4[var13] & -65536) >> 16) + var1;
++               if (var2i > var0 && var0 >= 0 && var10) {
++                  var2i = var0;
+@@ -3691,2 +3982,2 @@
+-               if (var2 <= 0 && var6) {
+-                  var2 = 1;
++               if (var2i <= 0 && var6) {
++                  var2i = 1;
+@@ -3696 +3987 @@
+-               var4[var13] |= (short)var2 << 16 & -65536;
++               var4[var13] |= (short)var2i << 16 & -65536;
+@@ -3768,2 +4059,2 @@
+-         var3 = screenHeight;
+-         drawSpriteScreen(var5, var3, 146, 0, 0, 2, var0);
++         int var3i = screenHeight; // DECOMP-FIX: boolean param slot reused as int
++         drawSpriteScreen(var5, var3i, 146, 0, 0, 2, var0);
+@@ -3778 +4069 @@
+-      var3 = imageTable[1618] / imageTable[1623];
++      int var3i = imageTable[1618] / imageTable[1623];
+@@ -3781,2 +4072,2 @@
+-      drawSpriteScreenSimple(0, var6 - var3, 147, 2, var0);
+-      drawSpriteScreenSimple(screenWidth - var5, var6 - var3, 147, 3, var0);
++      drawSpriteScreenSimple(0, var6 - var3i, 147, 2, var0);
++      drawSpriteScreenSimple(screenWidth - var5, var6 - var3i, 147, 3, var0);
+@@ -3787 +4078 @@
+-         var5 = var3;
++         var5 = var3i;
+@@ -3791 +4082 @@
+-      var3 = screenHeight - (imageTable[1607] + imageTable[1387] + var3 + var5);
++      var3i = screenHeight - (imageTable[1607] + imageTable[1387] + var3i + var5);
+@@ -3793 +4084 @@
+-         var3 -= 4;
++         var3i -= 4;
+@@ -3797 +4088 @@
+-      var0.fillRect(var7, var5, var6, var3);
++      var0.fillRect(var7, var5, var6, var3i);
+@@ -3804,2 +4095,2 @@
+-      var0.drawRect(var7, var5, var6, var3);
+-      var0.drawRect(var7 + 1, var5 + 1, var6 - 1, var3 - 1);
++      var0.drawRect(var7, var5, var6, var3i);
++      var0.drawRect(var7 + 1, var5 + 1, var6 - 1, var3i - 1);
+@@ -3807 +4098 @@
+-      var0.drawRect(var7, var5, var6 - 1, var3 - 1);
++      var0.drawRect(var7, var5, var6 - 1, var3i - 1);
+@@ -3816,2 +4107,2 @@
+-         var1 = var29.stringWidth("" + player[46]);
+-         int var8 = (screenWidth - var1 >> 1) - 4 - imageTable[1628];
++         int var1i = var29.stringWidth("" + player[46]);
++         int var8 = (screenWidth - var1i >> 1) - 4 - imageTable[1628];
+@@ -3820 +4111 @@
+-         var1 = 3;
++         var1i = 3;
+@@ -3822 +4113 @@
+-            var1 = 3 + (var32 - var19 >> 1);
++            var1i = 3 + (var32 - var19 >> 1);
+@@ -3828 +4119 @@
+-         var0.drawString("" + player[46], var8 + imageTable[1628] + 4 + (byte)(fontMetrics[2] & 0xFF), var1 + (byte)(fontMetrics[2] >> 8 & 0xFF), 20);
++         var0.drawString("" + player[46], var8 + imageTable[1628] + 4 + (byte)(fontMetrics[2] & 0xFF), var1i + (byte)(fontMetrics[2] >> 8 & 0xFF), 20);
+@@ -3833 +4124 @@
+-      var1 = (Gothic3Midlet.contentY - var5 - var7 >> 1) + 1;
++      int var1j = (Gothic3Midlet.contentY - var5 - var7 >> 1) + 1;
+@@ -3835,2 +4126,2 @@
+-         var2 = Gothic3Midlet.scrollY - Gothic3Midlet.contentY;
+-         if (var2 < 0) {
++         int var2i = Gothic3Midlet.scrollY - Gothic3Midlet.contentY;
++         if (var2i < 0) {
+@@ -3840 +4131 @@
+-         if (var2 > Gothic3Midlet.contentH - Gothic3Midlet.contentHeight) {
++         if (var2i > Gothic3Midlet.contentH - Gothic3Midlet.contentHeight) {
+@@ -3845,2 +4136,2 @@
+-            drawSpriteScreenSimple(Gothic3Midlet.contentX, var5 + var1, 160, 1, var0);
+-            drawSpriteScreenSimple(Gothic3Midlet.contentX + Gothic3Midlet.contentW - var31, var5 + var1, 160, 0, var0);
++            drawSpriteScreenSimple(Gothic3Midlet.contentX, var5 + var1j, 160, 1, var0);
++            drawSpriteScreenSimple(Gothic3Midlet.contentX + Gothic3Midlet.contentW - var31, var5 + var1j, 160, 0, var0);
+@@ -3850 +4141 @@
+-            var1 = Gothic3Midlet.contentX + var7 + 2;
++            var1j = Gothic3Midlet.contentX + var7 + 2;
+@@ -3852 +4143 @@
+-            var1 = Gothic3Midlet.contentX + 2;
++            var1j = Gothic3Midlet.contentX + 2;
+@@ -3855 +4146 @@
+-         defineTextArea(2, var1, var5 + 1, screenWidth - 2 * var1, var19 + 6, 540);
++         defineTextArea(2, var1j, var5 + 1, screenWidth - 2 * var1j, var19 + 6, 540);
+@@ -3862,3 +4153,3 @@
+-         var2 = screenWidth - imageFrames[138][3] - imageFrames[126][3] + 2 + 30;
+-         var1 = screenHeight - imageFrames[146][4] - imageFrames[139][4] + 2;
+-         var0.drawRect(var2 - 2, var1 - 1, 7, 34);
++         int var2j = screenWidth - imageFrames[138][3] - imageFrames[126][3] + 2 + 30;
++         var1j = screenHeight - imageFrames[146][4] - imageFrames[139][4] + 2;
++         var0.drawRect(var2j - 2, var1j - 1, 7, 34);
+@@ -4039 +4330 @@
+-      byte var3;
++      int var3; // DECOMP-FIX: byte->int (slot is int in bytecode; avoids lossy assign)
+@@ -4161,3 +4452,4 @@
+-            int var1 = (npcs[var0][4] * GameWorld.tileWidth >> 12) - cameraX;
+-            var0 = (npcs[var0][5] * GameWorld.tileWidth >> 12) - cameraY;
+-            return var1 >= 0 && var1 <= screenWidth && var0 >= 0 && var0 <= screenHeight;
++            // PORT: targetability uses the fixed 240x320 gameplay view (logic camera), not the real screen size
++            int var1 = (npcs[var0][4] * GameWorld.tileWidth >> 12) - logicCamX;
++            var0 = (npcs[var0][5] * GameWorld.tileHeight >> 12) - logicCamY;
++            return var1 >= 0 && var1 <= GAMEPLAY_VIEW_W && var0 >= 0 && var0 <= GAMEPLAY_VIEW_H;
+@@ -4694,0 +4987,2 @@
++      // PORT: camera Y used tileWidth for the y pixel position (equal today since tiles are square); both the real
++      // (render) camera and the virtual 240x320 gameplay camera are snapped.
+@@ -4696 +4990,3 @@
+-      cameraY = (player[5] * GameWorld.tileWidth >> 12) - (screenHeight >> 1);
++      cameraY = (player[5] * GameWorld.tileHeight >> 12) - (screenHeight >> 1);
++      logicCamX = (player[4] * GameWorld.tileWidth >> 12) - (GAMEPLAY_VIEW_W >> 1);
++      logicCamY = (player[5] * GameWorld.tileHeight >> 12) - (GAMEPLAY_VIEW_H >> 1);
+@@ -4699,0 +4996,3 @@
++   // PORT: widescreen. Gameplay must not depend on the logical screen size, so everything that used the view as a rule
++   // (isNpcTargetable, lock-on framing) uses a second, tick-driven "logic camera" computed with the exact original math
++   // for a fixed GAMEPLAY_VIEW_W x GAMEPLAY_VIEW_H (240x320) view. The real camera (cameraX/Y) is presentation only.
+@@ -4701,0 +5001 @@
++      boolean lock = false;
+@@ -4705,6 +5005,3 @@
+-         if (abs(var1) * 4 / 3 < (screenWidth << 12) / GameWorld.tileWidth && abs(var0) * 4 / 3 < (screenHeight << 12) / GameWorld.tileWidth) {
+-            var2 = false;
+-            var1 = player[4] + npcs[targetNpc][4] >> 1;
+-            var0 = player[5] + npcs[targetNpc][5] >> 1;
+-            cameraTargetX = (var1 * GameWorld.tileWidth >> 12) - (screenWidth >> 1);
+-            cameraTargetY = (var0 * GameWorld.tileWidth >> 12) - (screenHeight >> 1);
++         // PORT: lock-on test against the fixed virtual view (was screenWidth/screenHeight), Y with tileHeight
++         if (abs(var1) * 4 / 3 < (GAMEPLAY_VIEW_W << 12) / GameWorld.tileWidth && abs(var0) * 4 / 3 < (GAMEPLAY_VIEW_H << 12) / GameWorld.tileHeight) {
++            lock = true;
+@@ -4714,3 +5011,28 @@
+-      if (var2) {
+-         cameraTargetX = (player[4] * GameWorld.tileWidth >> 12) - (screenWidth >> 1);
+-         cameraTargetY = (player[5] * GameWorld.tileWidth >> 12) - (screenHeight >> 1);
++      int[] cam = {cameraX, cameraY, cameraTargetX, cameraTargetY};
++      stepCamera(cam, screenWidth, screenHeight, lock);
++      cameraX = cam[0];
++      cameraY = cam[1];
++      cameraTargetX = cam[2];
++      cameraTargetY = cam[3];
++      cam[0] = logicCamX;
++      cam[1] = logicCamY;
++      cam[2] = logicCamTargetX;
++      cam[3] = logicCamTargetY;
++      stepCamera(cam, GAMEPLAY_VIEW_W, GAMEPLAY_VIEW_H, lock);
++      logicCamX = cam[0];
++      logicCamY = cam[1];
++      logicCamTargetX = cam[2];
++      logicCamTargetY = cam[3];
++   }
++
++   /** One camera step for a view of vw x vh pixels; cam = {x, y, targetX, targetY}. Original updateCamera math. */
++   static void stepCamera(int[] cam, int vw, int vh, boolean lock) {
++      int cameraX = cam[0], cameraY = cam[1], cameraTargetX, cameraTargetY;
++      if (lock) {
++         int var1 = player[4] + npcs[targetNpc][4] >> 1;
++         int var0 = player[5] + npcs[targetNpc][5] >> 1;
++         cameraTargetX = (var1 * GameWorld.tileWidth >> 12) - (vw >> 1);
++         cameraTargetY = (var0 * GameWorld.tileHeight >> 12) - (vh >> 1);
++      } else {
++         cameraTargetX = (player[4] * GameWorld.tileWidth >> 12) - (vw >> 1);
++         cameraTargetY = (player[5] * GameWorld.tileHeight >> 12) - (vh >> 1);
+@@ -4743,2 +5065,2 @@
+-         if (cameraX > (GameWorld.mapWidth + 0) * GameWorld.tileWidth - screenWidth) {
+-            cameraX = (GameWorld.mapWidth + 0) * GameWorld.tileWidth - screenWidth;
++         if (cameraX > (GameWorld.mapWidth + 0) * GameWorld.tileWidth - vw) {
++            cameraX = (GameWorld.mapWidth + 0) * GameWorld.tileWidth - vw;
+@@ -4747,2 +5069,2 @@
+-         if (cameraY > (GameWorld.mapHeight + 3) * GameWorld.tileHeight - screenHeight) {
+-            cameraY = (GameWorld.mapHeight + 3) * GameWorld.tileHeight - screenHeight;
++         if (cameraY > (GameWorld.mapHeight + 3) * GameWorld.tileHeight - vh) {
++            cameraY = (GameWorld.mapHeight + 3) * GameWorld.tileHeight - vh;
+@@ -4751,2 +5073,2 @@
+-         if ((GameWorld.mapWidth + 0) * GameWorld.tileWidth < screenWidth) {
+-            cameraX = (GameWorld.mapWidth * GameWorld.tileWidth >> 1) - (screenWidth >> 1);
++         if ((GameWorld.mapWidth + 0) * GameWorld.tileWidth < vw) {
++            cameraX = (GameWorld.mapWidth * GameWorld.tileWidth >> 1) - (vw >> 1);
+@@ -4755,2 +5077,2 @@
+-         if ((GameWorld.mapHeight + 6) * GameWorld.tileHeight < screenHeight) {
+-            cameraY = (GameWorld.mapHeight * GameWorld.tileHeight >> 1) - (screenHeight >> 1);
++         if ((GameWorld.mapHeight + 6) * GameWorld.tileHeight < vh) {
++            cameraY = (GameWorld.mapHeight * GameWorld.tileHeight >> 1) - (vh >> 1);
+@@ -4767,2 +5089,2 @@
+-         if (cameraX > (GameWorld.mapWidth + 0) * GameWorld.tileWidth - screenWidth) {
+-            cameraX = (GameWorld.mapWidth + 0) * GameWorld.tileWidth - screenWidth;
++         if (cameraX > (GameWorld.mapWidth + 0) * GameWorld.tileWidth - vw) {
++            cameraX = (GameWorld.mapWidth + 0) * GameWorld.tileWidth - vw;
+@@ -4771,2 +5093,2 @@
+-         if (cameraY > (GameWorld.mapHeight + 5) * GameWorld.tileHeight - screenHeight) {
+-            cameraY = (GameWorld.mapHeight + 5) * GameWorld.tileHeight - screenHeight;
++         if (cameraY > (GameWorld.mapHeight + 5) * GameWorld.tileHeight - vh) {
++            cameraY = (GameWorld.mapHeight + 5) * GameWorld.tileHeight - vh;
+@@ -4775,2 +5097,2 @@
+-         if ((GameWorld.mapWidth + 0) * GameWorld.tileWidth < screenWidth) {
+-            cameraX = (GameWorld.mapWidth * GameWorld.tileWidth >> 1) - (screenWidth >> 1);
++         if ((GameWorld.mapWidth + 0) * GameWorld.tileWidth < vw) {
++            cameraX = (GameWorld.mapWidth * GameWorld.tileWidth >> 1) - (vw >> 1);
+@@ -4779,2 +5101,2 @@
+-         if ((GameWorld.mapHeight + 5) * GameWorld.tileHeight < screenHeight) {
+-            cameraY = (GameWorld.mapHeight * GameWorld.tileHeight >> 1) - (screenHeight >> 1);
++         if ((GameWorld.mapHeight + 5) * GameWorld.tileHeight < vh) {
++            cameraY = (GameWorld.mapHeight * GameWorld.tileHeight >> 1) - (vh >> 1);
+@@ -4782,0 +5105,5 @@
++
++      cam[0] = cameraX;
++      cam[1] = cameraY;
++      cam[2] = cameraTargetX;
++      cam[3] = cameraTargetY;
+@@ -4792,2 +5119,2 @@
+-            short var10 = (var12 & 128) != 0;
+-            int var9 = (var12 & 8) != 0;
++            boolean var10b = (var12 & 128) != 0; // DECOMP-FIX: boolean/int/short slot reuse in updateNpcs (var3b,var4b,var9b,var10b are the boolean uses)
++            boolean var9b = (var12 & 8) != 0;
+@@ -4803 +5130 @@
+-            short var5 = (short)((npcs[var15][12] & -65536) >> 16) > 0
++            boolean var5 = (short)((npcs[var15][12] & -65536) >> 16) > 0
+@@ -4805,2 +5132,2 @@
+-            int var4 = (short)((npcs[var15][12] & -65536) >> 16) > 0 && (short)(npcs[var15][12] & 65535) * 100 / (short)((npcs[var15][12] & -65536) >> 16) < 20;
+-            int var3 = 0;
++            boolean var4b = (short)((npcs[var15][12] & -65536) >> 16) > 0 && (short)(npcs[var15][12] & 65535) * 100 / (short)((npcs[var15][12] & -65536) >> 16) < 20;
++            boolean var3b = false;
+@@ -4823 +5150 @@
+-            if (var10) {
++            if (var10b) {
+@@ -4850 +5177 @@
+-            if (!var9) {
++            if (!var9b) {
+@@ -4852,2 +5179,2 @@
+-                  if (var4 && Gothic3Midlet.randomBelow(100) < 60) {
+-                     var3 = 1;
++                  if (var4b && Gothic3Midlet.randomBelow(100) < 60) {
++                     var3b = true;
+@@ -4855 +5182 @@
+-                     var3 = 1;
++                     var3b = true;
+@@ -4858,2 +5185,2 @@
+-                  if (var3) {
+-                     var5 = (boolean)0;
++                  if (var3b) {
++                     var5 = false;
+@@ -4862 +5189 @@
+-                        var3 = (short)((npcs[var15][17 + var44] & -65536) >> 16);
++                        int var3 = (short)((npcs[var15][17 + var44] & -65536) >> 16);
+@@ -4869 +5196 @@
+-                              var5 = (boolean)1;
++                              var5 = true;
+@@ -4885 +5212 @@
+-                  var10 = (short)(var14[20] & 65535);
++                  int var10 = (short)(var14[20] & 65535);
+@@ -4888 +5215 @@
+-                     var3 = getEntityTile(var14);
++                     int var3 = getEntityTile(var14);
+@@ -4894 +5221 @@
+-                     var9 = var13[29];
++                     int var9 = var13[29];
+@@ -4905 +5232 @@
+-                        var4 = getWeaponRange(weapons[var14[15]]);
++                        int var4 = getWeaponRange(weapons[var14[15]]);
+@@ -4918 +5245 @@
+-                     int var33 = 0;
++                     boolean var33 = false; // DECOMP-FIX: boolean/int slot reuse (var33i holds the int)
+@@ -4933,2 +5260,2 @@
+-                              var33 = GameWorld.entities[var10][5] - npcs[var15][5];
+-                              var0 = directionFromVector(var0, var33);
++                              int var33i = GameWorld.entities[var10][5] - npcs[var15][5];
++                              var0 = directionFromVector(var0, var33i);
+@@ -4950 +5277 @@
+-                           var33 = 1;
++                           var33 = true;
+@@ -4969,2 +5296,2 @@
+-                                 var33 = GameWorld.entities[var10][5] - npcs[var15][5];
+-                                 var0 = directionFromVector(var0, var33);
++                                 int var33i = GameWorld.entities[var10][5] - npcs[var15][5];
++                                 var0 = directionFromVector(var0, var33i);
+@@ -5044,2 +5371,2 @@
+-                     var5 = (short)(var14[20] & 65535);
+-                     if (var5 >= 0) {
++                     int var5i = (short)(var14[20] & 65535);
++                     if (var5i >= 0) {
+@@ -5048,2 +5375,2 @@
+-                        tmpVecB[0] = ((short)(GameWorld.entities[var5][0] & 65535) << 12) + 2048;
+-                        tmpVecB[1] = ((short)((GameWorld.entities[var5][0] & -65536) >> 16) << 12) + 2048;
++                        tmpVecB[0] = ((short)(GameWorld.entities[var5i][0] & 65535) << 12) + 2048;
++                        tmpVecB[1] = ((short)((GameWorld.entities[var5i][0] & -65536) >> 16) << 12) + 2048;
+@@ -5054,2 +5381,2 @@
+-                        tmpVecA[0] = ((short)(GameWorld.entities[var5][0] & 65535) << 12) + 2048;
+-                        tmpVecA[1] = ((short)((GameWorld.entities[var5][0] & -65536) >> 16) << 12) + 2048;
++                        tmpVecA[0] = ((short)(GameWorld.entities[var5i][0] & 65535) << 12) + 2048;
++                        tmpVecA[1] = ((short)((GameWorld.entities[var5i][0] & -65536) >> 16) << 12) + 2048;
+@@ -5058 +5385 @@
+-                           npcs[var15][22] = getEntityTile(GameWorld.entities[var5]);
++                           npcs[var15][22] = getEntityTile(GameWorld.entities[var5i]);
+@@ -5250,2 +5577,2 @@
+-      short var1;
+-      short var2;
++      int var1; // DECOMP-FIX: short->int (slot is int; avoids lossy assign)
++      int var2;
+@@ -5323,3 +5650,3 @@
+-         var1 = npcs[var0][14];
+-         if (var1 >= 0) {
+-            npcs[var0][29] = getWeaponRange(weapons[var1]);
++         int var1i = npcs[var0][14]; // DECOMP-FIX: boolean param slot reused as int
++         if (var1i >= 0) {
++            npcs[var0][29] = getWeaponRange(weapons[var1i]);
+@@ -6039 +6366 @@
+-         packStream = new DataInputStream(Gothic3Midlet.instance.getClass().getResourceAsStream("/i"));
++         packStream = new DataInputStream(gothic3.platform.Platform.openResource("/i"));
+@@ -6186,0 +6514 @@
++      gothic3.platform.scene3d.DrawCapture.anchor(var0, var1); // PORT
+@@ -6352 +6680 @@
+-               InputStream var20 = Gothic3Midlet.instance.getClass().getResourceAsStream(var3 + ".off");
++               InputStream var20 = gothic3.platform.Platform.openResource(var3 + ".off");
+@@ -6380 +6708 @@
+-                  byte var28 = 0;
++                  int var28 = 0; // DECOMP-FIX: narrow->int
+@@ -6473 +6801 @@
+-            InputStream var14 = Gothic3Midlet.instance.getClass().getResourceAsStream(var3 + ".png");
++            InputStream var14 = gothic3.platform.Platform.openResource(var3 + ".png");
+@@ -6484 +6812 @@
+-            InputStream var15 = Gothic3Midlet.instance.getClass().getResourceAsStream(var3 + ".off");
++            InputStream var15 = gothic3.platform.Platform.openResource(var3 + ".off");
+@@ -6552 +6880 @@
+-      InputStream var0 = Gothic3Midlet.instance.getClass().getResourceAsStream("/i");
++      InputStream var0 = gothic3.platform.Platform.openResource("/i");
+@@ -7020 +7348 @@
+-         byte var3 = 0;
++         int var3 = 0; // DECOMP-FIX: byte->int (bytecode has no i2b; avoids overflow narrowing)
+@@ -7022 +7350 @@
+-         for (byte var2 = animFrameTables[var6][var5][var7][0]; var2 < var8; var4++) {
++         for (int var2 = animFrameTables[var6][var5][var7][0]; var2 < var8; var4++) {
+@@ -7134,0 +7463 @@
++               gothic3.platform.scene3d.DrawCapture.anchor(var4, var3); // PORT
+@@ -7240 +7569 @@
+-            var17 = new DataInputStream(Gothic3Midlet.instance.getClass().getResourceAsStream(var1));
++            var17 = new DataInputStream(gothic3.platform.Platform.openResource(var1));
+@@ -7366 +7695 @@
+-                     for (byte var39 = 0; var39 < spriteRects[var0][var62].length; var39 += 7) {
++                     for (int var39 = 0; var39 < spriteRects[var0][var62].length; var39 += 7) {
+@@ -7522 +7851 @@
+-         var6 = new DataInputStream(Gothic3Midlet.instance.getClass().getResourceAsStream(var17));
++         var6 = new DataInputStream(gothic3.platform.Platform.openResource(var17));
+@@ -7775 +8104 @@
+-               var6 = 4;
++               int var6i = 4; // DECOMP-FIX: boolean/int slot reuse
+@@ -7777,4 +8106,4 @@
+-               while (--var6 >= 0) {
+-                  if (scriptThreads[var6][0] == 0) {
+-                     var8 = scriptThreads[var6];
+-                     var7 = var6;
++               while (--var6i >= 0) {
++                  if (scriptThreads[var6i][0] == 0) {
++                     var8 = scriptThreads[var6i];
++                     var7 = var6i;
+@@ -7833 +8162 @@
+-      int var2 = 0;
++      boolean var2 = false; // DECOMP-FIX: boolean/int slot reuse in executeScript (var2i holds the int uses)
+@@ -8019 +8348 @@
+-                  var2 = 1;
++                  var2 = true;
+@@ -8032 +8361 @@
+-               var2 = 1;
++               var2 = true;
+@@ -8240,0 +8570 @@
++               int var2i;
+@@ -8244 +8574 @@
+-                     var2 = 435;
++                     var2i = 435;
+@@ -8246 +8576 @@
+-                     var2 = 436;
++                     var2i = 436;
+@@ -8250 +8580 @@
+-                  var2 = 315 + var16;
++                  var2i = 315 + var16;
+@@ -8253 +8583 @@
+-                  var2 = 315 + player[11];
++                  var2i = 315 + player[11];
+@@ -8256 +8586 @@
+-               showMessageBox(var36, Gothic3Midlet.getText(var2), 100, 101);
++               showMessageBox(var36, Gothic3Midlet.getText(var2i), 100, 101);
+@@ -8260 +8590 @@
+-               var2 = 1;
++               var2 = true;
+@@ -8277 +8607 @@
+-               new Thread(loaderTask).start();
++               gothic3.port.Port.startLoader(loaderTask); // PORT: synchronous in deterministic mode
+@@ -8309 +8639 @@
+-               var2 = 1;
++               var2 = true;
+@@ -8380 +8710 @@
+-                  byte var47 = 1;
++                  int var47 = 1; // DECOMP-FIX: narrow->int
+@@ -8384 +8714 @@
+-                     var2 = var47 * var9;
++                     int var2j = var47 * var9;
+@@ -8386 +8716 @@
+-                     if (player[19] < var2 || var7 < var30) {
++                     if (player[19] < var2j || var7 < var30) {
+@@ -8390 +8720 @@
+-                     String var22 = Gothic3Midlet.getText(trainerStat + 29) + " +" + var47 * var8 + "\n(LP: " + var2;
++                     String var22 = Gothic3Midlet.getText(trainerStat + 29) + " +" + var47 * var8 + "\n(LP: " + var2j;
+@@ -8411 +8741 @@
+-                  var2 = 1;
++                  var2 = true;
+@@ -8421 +8751 @@
+-                  byte var5 = 1;
++                  int var5 = 1; // DECOMP-FIX: narrow->int
+@@ -8749 +9079 @@
+-      if (var4 && var0 != 0) {
++      if (var4 != 0 && var0 != 0) { // DECOMP-FIX: int flag used as condition
+@@ -8871,2 +9201,2 @@
+-         short var11 = (var0[3] & 16) != 0;
+-         var4 = computeDamage(getStrength(var0), getDexterity(var0), var5, U(var0), var4, var8, var9, (boolean)var11);
++         boolean var11b = (var0[3] & 16) != 0; // DECOMP-FIX: boolean/short slot reuse
++         var4 = computeDamage(getStrength(var0), getDexterity(var0), var5, U(var0), var4, var8, var9, var11b);
+@@ -8885 +9215 @@
+-               var11 = (short)(var0[2] & 65535);
++               short var11 = (short)(var0[2] & 65535);
+@@ -8906 +9236 @@
+-            byte var12 = 0;
++            int var12 = 0; // DECOMP-FIX: narrow->int
+@@ -8947 +9277 @@
+-      short var3 = 0;
++      int var3 = 0; // DECOMP-FIX: narrow->int
+@@ -9273 +9603,3 @@
+-      messageLines = Gothic3Midlet.wrapText(var0, var4, screenWidth - 5 - 5, 0);
++      msgBoxW = Math.min(screenWidth, MAX_BOX_W); // PORT: capped and centred on wide screens
++      msgBoxX = screenWidth - msgBoxW >> 1;
++      messageLines = Gothic3Midlet.wrapText(var0, var4, msgBoxW - 5 - 5, 0);
+@@ -9285,2 +9617,2 @@
+-      defineTextArea(8, 5, msgBoxTop + 2, screenWidth - 5 - 5, var5 + 5, 532);
+-      defineTextArea(7, 5, msgBoxTop + var5 + 2, screenWidth - 5 - 5, var6 + 5, 33);
++      defineTextArea(8, msgBoxX + 5, msgBoxTop + 2, msgBoxW - 5 - 5, var5 + 5, 532);
++      defineTextArea(7, msgBoxX + 5, msgBoxTop + var5 + 2, msgBoxW - 5 - 5, var6 + 5, 33);
+@@ -9296,0 +9629 @@
++   // PORT: x/width via msgBoxX/msgBoxW (capped, centred)
+@@ -9301 +9634 @@
+-      var0.fillRect(0, msgBoxTop, screenWidth, msgBoxHeight);
++      var0.fillRect(msgBoxX, msgBoxTop, msgBoxW, msgBoxHeight);
+@@ -9303,2 +9636,2 @@
+-      var0.fillRect(3, msgBoxTop + var1 + 2, screenWidth - 6, msgBoxHeight - (var2 + var1) - 2);
+-      var0.fillRect(3, msgBoxTop + msgBoxHeight + 2 - var2, screenWidth - 6, var2 - 5);
++      var0.fillRect(msgBoxX + 3, msgBoxTop + var1 + 2, msgBoxW - 6, msgBoxHeight - (var2 + var1) - 2);
++      var0.fillRect(msgBoxX + 3, msgBoxTop + msgBoxHeight + 2 - var2, msgBoxW - 6, var2 - 5);
+@@ -9306 +9639 @@
+-      var0.fillRect(3, msgBoxTop + 3, screenWidth - 6, var1 - 3);
++      var0.fillRect(msgBoxX + 3, msgBoxTop + 3, msgBoxW - 6, var1 - 3);
+@@ -9308,4 +9641,4 @@
+-      var0.drawRect(1, msgBoxTop + 1, screenWidth - 3, msgBoxHeight - 3);
+-      var0.drawRect(1, msgBoxTop + var1, screenWidth - 3, msgBoxHeight - (var2 + var1));
+-      drawSpriteScreenSimple(1, msgBoxTop + 1, 152, 0, var0);
+-      drawSpriteScreen(screenWidth - 1, msgBoxTop + 1, 152, 0, 0, 2, var0);
++      var0.drawRect(msgBoxX + 1, msgBoxTop + 1, msgBoxW - 3, msgBoxHeight - 3);
++      var0.drawRect(msgBoxX + 1, msgBoxTop + var1, msgBoxW - 3, msgBoxHeight - (var2 + var1));
++      drawSpriteScreenSimple(msgBoxX + 1, msgBoxTop + 1, 152, 0, var0);
++      drawSpriteScreen(msgBoxX + msgBoxW - 1, msgBoxTop + 1, 152, 0, 0, 2, var0);
+@@ -9314,2 +9647,2 @@
+-         drawSpriteScreenSimple((screenWidth >> 1) - var1, msgBoxTop + msgBoxHeight - var2 + 4, 149, 0, var0);
+-         drawSpriteScreenSimple(screenWidth >> 1, msgBoxTop + msgBoxHeight - var2 + 4, 149, 1, var0);
++         drawSpriteScreenSimple((msgBoxX + (msgBoxW >> 1)) - var1, msgBoxTop + msgBoxHeight - var2 + 4, 149, 0, var0);
++         drawSpriteScreenSimple(msgBoxX + (msgBoxW >> 1), msgBoxTop + msgBoxHeight - var2 + 4, 149, 1, var0);
+@@ -9320 +9653 @@
+-         drawSpriteScreenSimple(4 + (var1 >> 1), msgBoxTop + msgBoxHeight - 3, 135, 0, var0);
++         drawSpriteScreenSimple(msgBoxX + 4 + (var1 >> 1), msgBoxTop + msgBoxHeight - 3, 135, 0, var0);
+@@ -9324 +9657 @@
+-         drawSpriteScreenSimple(screenWidth - 2 - (var1 >> 1), msgBoxTop + msgBoxHeight - 3, 135, 1, var0);
++         drawSpriteScreenSimple(msgBoxX + msgBoxW - 2 - (var1 >> 1), msgBoxTop + msgBoxHeight - 3, 135, 1, var0);
+@@ -9501 +9834 @@
+-               for (byte var5 = 0; var5 < var2.length - 1; var5 += 2) {
++               for (int var5 = 0; var5 < var2.length - 1; var5 += 2) {
+@@ -9730 +10063 @@
+-                        InputStream var8 = Gothic3Midlet.instance.getClass().getResourceAsStream(var13);
++                        InputStream var8 = gothic3.platform.Platform.openResource(var13);
+@@ -9806,0 +10140,5 @@
++      int dlgShift = 0;
++      if (dialogueRectW > MAX_BOX_W) { // PORT: cap text column width and centre it on wide screens
++         dlgShift = (screenWidth - MAX_BOX_W >> 1) - (dialogueRectX + 8);
++         dialogueRectW = MAX_BOX_W;
++      }
+@@ -9808 +10146 @@
+-      dialogueRectX += 8;
++      dialogueRectX += 8 + dlgShift;
+@@ -9863 +10201 @@
+-         dialogueSkipAllowedAt = System.currentTimeMillis() + 500L;
++         dialogueSkipAllowedAt = gothic3.port.Port.millis() + 500L; // PORT: game clock (virtual in deterministic mode)
+@@ -10003 +10341 @@
+-         } else if (dialogueSkipAllowedAt < 0L || System.currentTimeMillis() >= dialogueSkipAllowedAt) {
++         } else if (dialogueSkipAllowedAt < 0L || gothic3.port.Port.millis() >= dialogueSkipAllowedAt) { // PORT: game clock (virtual in deterministic mode)
+@@ -10063 +10401 @@
+-            int var7 = dialogueContentH > dialogueRectH;
++            boolean var7 = dialogueContentH > dialogueRectH; // DECOMP-FIX: boolean/int slot reuse
+@@ -10075,2 +10413,2 @@
+-                  var7 = var13 + ((String[])dialogueHistory.elementAt(dialogueSelected)).length * var14 + 20 + imageTable[1695];
+-                  if (var7 <= dialogueRectY + dialogueRectH) {
++                  int var7i = var13 + ((String[])dialogueHistory.elementAt(dialogueSelected)).length * var14 + 20 + imageTable[1695];
++                  if (var7i <= dialogueRectY + dialogueRectH) {
+@@ -10146 +10484 @@
+-      if ((globalFlags[2] & 128) == 0 && (globalFlags[2] & 1) != 0) {
++      if (!portIntermediateFrame && (globalFlags[2] & 128) == 0 && (globalFlags[2] & 1) != 0) { // PORT: one-shot tutorial dialogue starts from draw code: never from an in-between frame
+@@ -10163 +10501 @@
+-         var0.setClip(10, 0, screenWidth - 20, screenWidth);
++         var0.setClip(10, 0, screenWidth - 20, screenHeight); // PORT: was screenWidth (width used as height)
+@@ -10180 +10518 @@
+-            for (short var10 = 0; var10 < var8; var10 += imageTable[1805]) {
++            for (int var10 = 0; var10 < var8; var10 += imageTable[1805]) {
+@@ -10218 +10556 @@
+-            for (short var13 = 0; var13 < var4; var13 += imageTable[1826]) {
++            for (int var13 = 0; var13 < var4; var13 += imageTable[1826]) {
+@@ -10237 +10575 @@
+-         short var22 = imageTable[1508];
++         int var22 = imageTable[1508]; // DECOMP-FIX: short->int
+@@ -10361,2 +10699,2 @@
+-      int var2 = var1 == 0 || var1 == 1;
+-      int var3 = var1 == 0 || var1 == 2;
++      boolean var2b = var1 == 0 || var1 == 1; // DECOMP-FIX: boolean/int slot reuse
++      boolean var3b = var1 == 0 || var1 == 2;
+@@ -10364 +10702 @@
+-      if (var2) {
++      if (var2b) {
+@@ -10367 +10705 @@
+-         var2 = var1 - imageTable[1607];
++         int var2 = var1 - imageTable[1607];
+@@ -10375 +10713 @@
+-      if (var3) {
++      if (var3b) {
+@@ -10377 +10715 @@
+-         var3 = screenHeight - imageTable[1607];
++         int var3 = screenHeight - imageTable[1607];
+@@ -10379 +10717 @@
+-         var2 = var1 - imageTable[1518];
++         int var2 = var1 - imageTable[1518];
+@@ -10917 +11255 @@
+-            if (!var2) {
++            if (var2 == 0) { // DECOMP-FIX: int flag
+@@ -10924 +11262 @@
+-            if (!var2) {
++            if (var2 == 0) { // DECOMP-FIX: int flag
+@@ -11096 +11434 @@
+-      short var3 = 0;
++      int var3 = 0; // DECOMP-FIX: short->int (orig has no i2s here)
+@@ -11108 +11446 @@
+-      var2 = (short)(var3 > var2 ? var3 : var2);
++      var2 = var3 > var2 ? var3 : var2;
+@@ -11123 +11461 @@
+-            var3 = (short)var0;
++            var3 = var0;
+@@ -11266 +11604 @@
+-      for (byte var6 = 0; var6 < 60; var6 += 6) {
++      for (int var6 = 0; var6 < 60; var6 += 6) {
+@@ -11288 +11626 @@
+-         for (byte var2 = 0; var2 < 60; var2 += 6) {
++         for (int var2 = 0; var2 < 60; var2 += 6) {
+@@ -11302 +11640 @@
+-      for (byte var6 = 0; var6 < 60; var6 += 6) {
++      for (int var6 = 0; var6 < 60; var6 += 6) {
+@@ -11398 +11736 @@
+-      for (byte var8 = 0; var8 < var6 * 6; var8 += 6) {
++      for (int var8 = 0; var8 < var6 * 6; var8 += 6) {
+@@ -11416 +11754 @@
+-      for (byte var3 = 0; var3 < var2 * 6; var3 += 6) {
++      for (int var3 = 0; var3 < var2 * 6; var3 += 6) {
+@@ -11429 +11767 @@
+-         for (byte var6 = 0; var6 < var7 * 6; var6 += 6) {
++         for (int var6 = 0; var6 < var7 * 6; var6 += 6) {
+@@ -11452 +11790 @@
+-      for (byte var6 = 0; var6 < 60; var6 += 6) {
++      for (int var6 = 0; var6 < 60; var6 += 6) {
+@@ -11469 +11807 @@
+-      for (byte var2 = 0; var2 < 60; var2 += 6) {
++      for (int var2 = 0; var2 < 60; var2 += 6) {
+@@ -11481 +11819 @@
+-         for (byte var5 = 0; var5 < 60; var5 += 6) {
++         for (int var5 = 0; var5 < 60; var5 += 6) {
+@@ -11598 +11936 @@
+-      for (byte var8 = 0; var8 < var6 * 6; var8 += 6) {
++      for (int var8 = 0; var8 < var6 * 6; var8 += 6) {
+@@ -11616 +11954 @@
+-      for (byte var3 = 0; var3 < var2 * 6; var3 += 6) {
++      for (int var3 = 0; var3 < var2 * 6; var3 += 6) {
+@@ -11631 +11969 @@
+-      for (byte var8 = 0; var8 < var9 * 6; var8 += 6) {
++      for (int var8 = 0; var8 < var9 * 6; var8 += 6) {
+@@ -11667 +12005 @@
+-      for (byte var6 = 0; var6 < 60; var6 += 6) {
++      for (int var6 = 0; var6 < 60; var6 += 6) {
+@@ -11684 +12022 @@
+-         for (byte var2 = 0; var2 < 60; var2 += 6) {
++         for (int var2 = 0; var2 < 60; var2 += 6) {
+@@ -11695 +12033 @@
+-         for (byte var3 = 0; var3 < 60; var3 += 6) {
++         for (int var3 = 0; var3 < 60; var3 += 6) {
+@@ -11708 +12046 @@
+-      for (byte var6 = 0; var6 < 60; var6 += 6) {
++      for (int var6 = 0; var6 < 60; var6 += 6) {
+@@ -11745 +12083 @@
+-      for (byte var6 = 0; var6 < 30; var6 += 6) {
++      for (int var6 = 0; var6 < 30; var6 += 6) {
+@@ -11762 +12100 @@
+-      for (byte var2 = 0; var2 < 30; var2 += 6) {
++      for (int var2 = 0; var2 < 30; var2 += 6) {
+@@ -11776 +12114 @@
+-      for (byte var5 = 0; var5 < 30; var5 += 6) {
++      for (int var5 = 0; var5 < 30; var5 += 6) {
+@@ -11835 +12173 @@
+-      for (byte var3 = 0; var3 < 60; var3 += 6) {
++      for (int var3 = 0; var3 < 60; var3 += 6) {
+@@ -11852 +12190 @@
+-      for (byte var1 = 0; var1 < 60; var1 += 6) {
++      for (int var1 = 0; var1 < 60; var1 += 6) {
+@@ -11872 +12210 @@
+-      for (byte var4 = 0; var4 < 60; var4 += 6) {
++      for (int var4 = 0; var4 < 60; var4 += 6) {
+@@ -11983 +12321 @@
+-      for (byte var2 = 0; var2 < 60; var2 += 6) {
++      for (int var2 = 0; var2 < 60; var2 += 6) {
+@@ -12000 +12338 @@
+-      for (byte var2 = 0; var2 < 60; var2 += 6) {
++      for (int var2 = 0; var2 < 60; var2 += 6) {
+@@ -12012 +12350 @@
+-         for (byte var5 = 0; var5 < 60; var5 += 6) {
++         for (int var5 = 0; var5 < 60; var5 += 6) {
+@@ -12032 +12370 @@
+-      for (byte var3 = 0; var3 < 60; var3 += 6) {
++      for (int var3 = 0; var3 < 60; var3 += 6) {
+@@ -12049 +12387 @@
+-      for (byte var1 = 0; var1 < 60; var1 += 6) {
++      for (int var1 = 0; var1 < 60; var1 += 6) {
+@@ -12069 +12407 @@
+-      for (byte var4 = 0; var4 < 60; var4 += 6) {
++      for (int var4 = 0; var4 < 60; var4 += 6) {
+@@ -12119 +12457 @@
+-            slot3Timestamp = System.currentTimeMillis();
++            slot3Timestamp = gothic3.port.Port.millis(); // PORT: game clock (virtual in deterministic mode)
+@@ -12122 +12460 @@
+-            slot2Timestamp = System.currentTimeMillis();
++            slot2Timestamp = gothic3.port.Port.millis(); // PORT: game clock (virtual in deterministic mode)
+@@ -12229,0 +12568 @@
++      gothic3.platform.scene3d.DrawCapture.beginFrame(); // PORT: 3D renderer capture (docs/render3d.md)
+@@ -12481 +12820 @@
+-                     new Thread(loaderTask).start();
++                     gothic3.port.Port.startLoader(loaderTask); // PORT: synchronous in deterministic mode
+@@ -12493 +12832 @@
+-                           new Thread(loaderTask).start();
++                           gothic3.port.Port.startLoader(loaderTask); // PORT: synchronous in deterministic mode
+@@ -12724 +13063 @@
+-      if (Gothic3Midlet.isSettingOn(1)) {
++      if (Gothic3Midlet.isSettingOn(1) || Gothic3Midlet.isSettingOn(5)) { // PORT: music+sfx mode suspends/resumes like music mode
+@@ -12730,0 +13070,3 @@
++   // PORT: true while PortLoop renders an in-between (interpolated) frame; draw code must not change game state then
++   static boolean portIntermediateFrame = false;
++
+@@ -12731,0 +13074,3 @@
++      if (gothic3.platform.RenderConfig.interpolated()) { // PORT: fixed 10 Hz logic, display-rate interpolated rendering (docs/platform.md)
++         gothic3.port.PortLoop.run();
++      } else {
+@@ -12732,0 +13078 @@
++         gothic3.port.PortLoop.beginTick(); // PORT: tick index / timing for tracing
+@@ -12742 +13088,2 @@
+-         this.render(this.screenGraphics);
++         gothic3.port.PortLoop.afterLogic(); // PORT: deterministic-mode loads, interpolation snapshot (verification only in classic mode)
++         gothic3.port.PortLoop.renderCanonical(); // PORT: was this.render(this.screenGraphics)
+@@ -12750 +13097,3 @@
+-         if (var1 < 100L) {
++         gothic3.port.PortLoop.endTick(); // PORT: tick trace / verification / tick counter for automation
++         long frameMs = gothic3.port.PortLoop.classicFrameMs(); // PORT: fast forward
++         if (var1 < frameMs) {
+@@ -12752 +13101 @@
+-               Thread.sleep(100L - var1);
++               Thread.sleep(frameMs - var1);
+@@ -12756,0 +13106 @@
++      }
+@@ -12800,0 +13151 @@
++      gothic3.port.GameHooks.register(PortBridge.INSTANCE); // PORT: accessor for the port module / desktop tools (no compile-time dependency on g3)

@@ -1,0 +1,198 @@
+# B = world / map / entity model + random level generator (see docs/analysis/BCD.md)
+class B GameWorld
+
+# ---- core world state ----
+field B a [[I entities                # flat table of ALL entity records (player, creatures, objects, items...), built by buildEntityTable
+field B b I mapWidth                  # map width in tiles
+field B c I mapHeight                 # map height in tiles
+field B d I tileWidth                 # tile width in px (16; 8 on map 0 = overview map)
+field B e I tileHeight                # tile height in px
+field B f I tilesetIds                # packed: low16 = layer0 tileset (A.ec row), high16 = layer1 tileset
+field B g [[I tileGrid                # tileGrid[y][x]; 2 x 16-bit layers per int, see analysis doc
+field B h I pendingFacing             # facing to apply to player after map load/script (-1 = none); read+cleared in A
+field B i Z needPathGrid              # always true in practice; if set, B.initMapRuntime allocates A.ya (half-tile path grid)
+field B j I staticMiscItemCount       # number of A.oa (flag 512) entries read from the map file (dynamic drops are indexed after these)
+field B k I paletteTheme              # 0..4, chosen from the map id; tileset images whose ec[4]==5 are recoloured with this variant
+field B l [[[I preloadTables          # private; the 6 type tables whose images are preloaded in preloadMapImages
+field B m I extraSlotsIa              # extra A.ia capacity needed (creature-held items), used while loading
+field B n I extraSlotsMa
+field B o I extraSlotsUa
+field B p I extraSlotsOa
+field B q I extraSlotsKa
+field B r I objectStateBitCounter     # next bit index in per-map state mask (2 bits per openable/stateful object)
+field B s I inventoryListCount        # number of 'inventory list head' slots allocated in A.jA
+field B t [I queryRect                # scratch rect used by A for entity queries
+field B u [[I cellHeads               # spatial hash: cellHeads[y][x] = first entity index in that tile (-1 none); chain via entity[1] low16
+field B v [I scratchPosSort
+field B w [I scratchRectSort
+field B x [I scratchPosTile
+field B y [I scratchPosHitbox
+field B z [I scratchHitboxCenter
+field B aa [I queryHitbox
+field B ba [I scratchRaySegRect
+field B ca [I scratchCenterOld
+field B da [I scratchCenterOther
+field B ea [I scratchRectOld
+field B fa [I scratchRectNew
+field B ga [I scratchRectSlide
+field B ha [I scratchCenterSlide
+field B ia [I scratchCenterOther2
+field B ja [I scratchNearRectA
+field B ka [I scratchNearRectB
+field B la [I scratchLosPosA
+field B ma [I scratchLosPosB
+field B na [I scratchLosHit
+
+# ---- random level generator state ----
+field B oa [[I prefabCounts           # per room-class counts of prefab sub-maps (map entries 53..143 in file d)
+field B pa [B terrainTiles            # 6 bytes per terrain type: [0..3] tile index variants, [4] autotile set, [5] use corner variant
+field B qa [[B autotileLookup         # [set][(mask4<<1)+0]=drawRegion transform, +1=variant column into terrainTiles
+field B ra [B cornerVariantMap
+field B sa [[B terrainGrid            # generator terrain type per cell
+field B ta [[B terrainGridTmp
+field B ua [[I generatedTiles         # generated tile grid (becomes tileGrid); bit15 walkable, bit31 occupied
+field B va [[[I prefabTiles           # prefab sub-map tile grids
+field B wa [[[I prefabObjects         # prefab sub-map object lists
+field B xa I genWidth
+field B ya I genHeight
+field B za I genCenterX
+field B aA I genCenterY
+field B bA I genNorthX
+field B cA I genNorthY
+field B dA I genEastX
+field B eA I genEastY
+field B fA I genSouthX
+field B gA I genSouthY
+field B hA I genWestX
+field B iA I genWestY
+field B jA I startX                   # player entry cell
+field B kA I startY
+field B lA I prefabObjectCount
+field B mA [[I prefabObjectTemp
+field B nA I genIaSlots
+field B oA I genKaSlots
+field B pA I genMaSlots
+field B qA I genUaSlots
+field B rA I spawnIndex
+field B sA [I scratchList
+field B tA I specialAreaX
+field B uA I specialAreaY
+field B vA I specialAreaTerrain
+field B wA I generatorKind            # first arg of generateRandomMap; ==2 is the special (room-based) kind
+field B xA I monsterGroupCount
+field B yA [I monsterGroupClass
+field B zA [I monsterGroupSize
+field B ab [I monsterGroupCandidateCount
+field B bb [[I monsterGroupCandidates
+field B cb I randomMapStateBits       # state mask used instead of A.bA[map] while on a random map (A.ea[11]==-1)
+field B db [I wallDecorTable          # 6 ints per neighbour mask: 3 (tile,palette) pairs for wall-top decoration layers
+field B eb [I overlapResult
+
+# ---- entity table / spatial grid ----
+method B A ()V buildEntityTable
+method B B ()V clearEntityTable
+method B F ()V allocCellGrid
+method B G ()V freeCellGrid
+method B A ([I[I)V getEntityPos            # out[0..1] = centre x,y in 1/4096 tile units
+method B B ([I[I)V getEntityPos3           # + out[2] = z height
+method B A ([I)I getSortY                  # Y-sort key (bottom of hitbox / object sort offset)
+method B B ([I)I getTileCoord              # packed tile x (low16) | y (high16)
+method B C ([I[I)V getHitbox               # out = minX,minY,maxX,maxY in 1/4096 tile
+method B D ([I[I)V getHitboxCenter
+method B E ([I[I)Z hitboxesOverlap
+method B A (IIII[I[I)Z clipSegmentToRect
+method B C ([I)V insertIntoGrid
+method B D ([I)V removeFromGrid
+method B A ([II)I queryRectChain          # entities overlapping rect and matching flag mask; linked via entity[1] high16; returns head or -1
+method B A (IIIII[I)I castRay              # -2 clear, -1 blocked by terrain, else index of entity hit
+method B A (IIIII[IZ)I castRayIgnoringPassable
+method B A ([III)V setEntityTile
+method B A ([IIIII)I moveAlongAxis         # (entity,newValue,fieldIndex 4|5,mask,axis) -2 ok, -1 wall, else blocking entity
+method B A ([IZZ)I probeWallSides
+method B A ([IIII)I moveEntity             # (entity,targetX,targetY,mask) with wall sliding; -2 free, -1 blocked, else entity index
+method B A ([I[II)Z isNear
+method B F ([I[I)Z hasLineOfSight
+method B A (IIII)V setPathParent           # A.ya half-tile pathfinding grid: parent cell
+method B A (II)I getPathParent
+
+# ---- loading ----
+method B C ()V markMapResources            # tells A which images this map needs
+method B D ()V unloadMap
+method B B (II)V initMapRuntime            # post-load setup (progress 25..100)
+method B A (ILjava/io/DataInputStream;)[[I readMapEntry
+method B A (III)V loadMap                  # (mapId, spawnTileX, spawnTileY)
+method B A (I)Z loadPrefabs                # loads prefab sub-maps (file d entries >= 53)
+method B A (Ljava/io/DataInputStream;)V readTypeTables
+method B B (Ljava/io/DataInputStream;)V readMapEntities
+method B A (Ljava/io/DataInputStream;I[[IZ)[[I readTileLayer
+method B A (Ljava/io/DataInputStream;Z)[[I readMapGrid
+method B C (Ljava/io/DataInputStream;)V readMonsterTypes       # A.ha
+method B D (Ljava/io/DataInputStream;)V readStackableTypes    # A.na (gold/ammo/potions: quantity-based)
+method B E (Ljava/io/DataInputStream;)V readItemTypesQa       # A.qa
+method B F (Ljava/io/DataInputStream;)V readWeaponTypes       # A.ja
+method B G (Ljava/io/DataInputStream;)V readArmorTypes        # A.la
+method B H (Ljava/io/DataInputStream;)V readObjectTypes       # A.sa
+method B I (Ljava/io/DataInputStream;)V readItemTypesVa       # A.va
+method B J (Ljava/io/DataInputStream;)V readItemTypesXa       # A.xa
+method B K (Ljava/io/DataInputStream;)V readAffixTypes        # A.ta
+method B L (Ljava/io/DataInputStream;)V readCreatures         # A.ga
+method B M (Ljava/io/DataInputStream;)V readStackables        # A.ma
+method B N (Ljava/io/DataInputStream;)V readItemsQa           # A.oa
+method B A (Ljava/io/DataInputStream;I)V readItems            # kind 0=A.ia 1=A.ka 2=A.ua
+method B O (Ljava/io/DataInputStream;)V readObjects           # A.ra
+method B P (Ljava/io/DataInputStream;)V readItemsXa           # A.wa
+method B Q (Ljava/io/DataInputStream;)V readTriggers          # A.fC
+method B R (Ljava/io/DataInputStream;)V readScripts           # A.eC
+method B E ()I getObjectStateBits
+method B B (I)V setObjectStateBits
+
+# ---- random level generation ----
+method B C (II)Z initGenerator
+method B H ()V freeGenerator
+method B D (II)I neighborMask4At
+method B B (III)I neighborMask4
+method B E (II)I cornerMaskAt
+method B C (III)I cornerMask
+method B B (IIII)I countSameTerrainNear
+method B F (II)I getTerrainAt
+method B A (IIIIIIIII)V growTerrain
+method B G (II)V replaceTerrain
+method B H (II)V eraseUnfittingTerrain
+method B I (II)V scatterTerrain
+method B A (Z)V carvePath
+method B B (Z)V carveRoad
+method B I ()V fillBorder
+method B J ()V bakeTiles
+method B C (I)V placeSpecialArea
+method B K ()V placePrefabs
+method B L ()V populateSpawners
+method B J (II)I findFreeCellNear
+method B M ()V pickMonsterGroups
+method B D (I)I reserveSpawnCells
+method B C (Z)V spawnCreatures
+method B N ()V markSpawnCellsWalkable
+method B D (III)V generateTerrain
+method B E (I)V placeEntrance
+method B K (II)V buildReturnEvents
+method B E (III)Z generateRandomMap         # (kind, layout, entranceSide) -> success
+method B F (I)V carveStartRoom
+method B A (II[B)I roomContact
+method B O ()V generateRooms
+method B P ()V decorateWalls
+
+# ---- loot / inventory helpers ----
+method B A (I[I)I getInventoryListBase
+method B Q ()I firstNonEmptyInventoryTab
+method B R ()V nextInventoryTab
+method B S ()V prevInventoryTab
+method B T ()V fillCreatureInventories
+method B U ()V collectObjectContents
+method B G (I)V fillCreatureLoot
+method B C (IIII)I giveStackable
+method B F (III)V giveItemVa
+method B A (IZ[I)V initItemInstance
+method B A (IIZI)Z giveWeaponOfClass
+method B B ([IIIII)I rollAffix
+method B E ([I)V rollAffixes
+method B F ([I)Ljava/lang/String; getItemName
+method B G ([I)I getItemValue

@@ -1,0 +1,12 @@
+# C = background loader task (Runnable): initial resource load or map load/generation while a loading screen runs
+class C LoadTask
+field C a LA; game
+field C b I initStage                 # >0: run A.IA(initStage) (initial resource load) instead of a map load
+field C c I progress                 # static, 0..100, loading-bar percentage written by B/C
+field C d I mapIdOrKind              # map id, or generator kind when randomMap
+field C e I spawnXOrLayout           # spawn tile x, or generator layout
+field C f I spawnYOrSide             # spawn tile y, or generator entrance side
+field C g Z randomMap                # true: B.generateRandomMap(d,e,f) else B.loadMap(d,e,f)
+field C h Ljava/lang/Object; lock
+method C A (LA;IIIZ)V setupMapLoad
+method C A (LA;I)V setupInitLoad

@@ -1,0 +1,90 @@
+name: Release
+
+# Push a tag like v0.1.0 to build all platforms and publish a GitHub Release.
+# "Run workflow" (workflow_dispatch) builds everything and uploads workflow artifacts only (no release).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-latest]   # 22.04: older glibc for the bundled ffmpeg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Guard - no game files tracked in version control
+        shell: bash
+        run: scripts/check-no-game-files.sh
+      - name: Check tag matches gradle.properties version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          ver=$(grep '^version=' gradle.properties | cut -d= -f2)
+          if [ "v$ver" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match gradle.properties version $ver" >&2
+            exit 1
+          fi
+      # No game jar here (bring your own jar): the :game module is skipped; the release contains no game content.
+      - name: Build and test
+        shell: bash
+        run: ./gradlew build -PnoGame --no-daemon
+      # Minimal LGPL ffmpeg (AMR-NB -> WAV only), built on this OS (cached by script hash). A failure here fails this OS's package job;
+      # the other OSes are independent (no cross-OS job dependency, so a missing runner for one OS never blocks the others).
+      - uses: ./.github/actions/minimal-ffmpeg
+      - name: Package app image (jpackage + jlink runtime, with the minimal ffmpeg)
+        shell: bash
+        run: ./gradlew :desktop:packageApp -PnoGame -PffmpegDir="$PWD/ffmpeg-out" --no-daemon
+      - name: Build fat jar (once)
+        if: matrix.os == 'ubuntu-22.04'
+        shell: bash
+        run: ./gradlew :desktop:dist -PnoGame --no-daemon
+      # Release guard, on every OS, before anything is uploaded: neither the fat jar nor the app image may contain
+      # g3 classes or jar-derived game data. (build/packageApp already depend on these; the explicit steps make the guard visible.)
+      - name: Guard - no game content in the app image
+        shell: bash
+        run: ./gradlew :desktop:checkNoGameContentImage -PnoGame -PffmpegDir="$PWD/ffmpeg-out" --no-daemon
+      - name: Guard - no game content in the fat jar
+        shell: bash
+        run: ./gradlew :desktop:checkNoGameContent -PnoGame --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gothic3-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            desktop/build/dist/gothic3-*.zip
+            desktop/build/dist/gothic3-*.tar.gz
+            ${{ matrix.os == 'ubuntu-22.04' && 'desktop/build/libs/gothic3-*.jar' || '' }}
+
+  release:
+    name: Create GitHub Release
+    # always(): publish whatever OSes built (a macOS runner shortage must not block Linux/Windows)
+    if: always() && startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: List artifacts
+        run: ls -lR artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
+          fail_on_unmatched_files: false

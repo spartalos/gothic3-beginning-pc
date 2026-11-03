@@ -1,0 +1,109 @@
+# Tick-based version of smoke.script (for --trace-ticks / deterministic runs): 1 tick = 100 ms of game time.
+# wait N ms -> waitticks N/100; tap K -> tapticks K 2 1 (hold 2 ticks, wait 1).
+waitticks 80
+tapticks FIRE 2 1
+waitticks 35
+shot 01_main_menu
+tapticks FIRE 2 1
+waitticks 30
+shot 02_intro_dialogue
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d04
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d09
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d14
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d19
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d24
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d29
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d34
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d39
+press RIGHT
+waitticks 8
+release RIGHT
+waitticks 5
+shot 90_moved_right
+press DOWN
+waitticks 8
+release DOWN
+waitticks 5
+shot 91_moved_down
+waitticks 5
+exit

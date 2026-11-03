@@ -1,0 +1,207 @@
+plugins { id 'application' }
+
+def gdxVersion = '1.14.2'
+def controllersVersion = '2.2.4'
+def lwjglVersion = '3.3.3'   // the version gdx-backend-lwjgl3 1.14.2 uses
+
+dependencies {
+    implementation project(':midp')
+    implementation project(':port')
+    // Bring your own jar: the app contains NO game classes or game data. The game is built at run time from the user's own jar
+    // (buildtools pipeline + javax.tools, docs/byo-jar.md). `:desktop:run` loads the build-time generated :game jar instead (see run below).
+    implementation project(':buildtools')
+    implementation "org.lwjgl:lwjgl-tinyfd:$lwjglVersion"   // native "choose jar" file dialog of the setup screen
+    ['natives-linux', 'natives-linux-arm64', 'natives-windows', 'natives-windows-x86', 'natives-windows-arm64', 'natives-macos', 'natives-macos-arm64'].each {
+        runtimeOnly "org.lwjgl:lwjgl-tinyfd:$lwjglVersion:$it"
+    }
+    implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+    runtimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+    implementation "com.badlogicgames.gdx-controllers:gdx-controllers-core:$controllersVersion"
+    runtimeOnly "com.badlogicgames.gdx-controllers:gdx-controllers-desktop:$controllersVersion"
+}
+
+application {
+    mainClass = 'gothic3.desktop.DesktopLauncher'
+    applicationDefaultJvmArgs = ['-Djava.awt.headless=true', '-Dfile.encoding=UTF-8']
+}
+
+// ./gradlew :desktop:run --args="--frames-dir out/frames"
+tasks.named('run') {
+    workingDir = rootProject.projectDir
+    // developer path: load the game generated at build time (setupGame) instead of running the first-run setup.
+    // Without a game jar at build time there is no :game module; the app then runs its first-run setup (bring your own jar) like a release.
+    if (rootProject.ext.gameEnabled) {
+        dependsOn ':game:jar'
+        systemProperty 'g3.game.classpath', project(':game').layout.buildDirectory.file("libs/game-${project.version}.jar").get().asFile.path
+    }
+    doFirst {
+        // Forward debug switches, e.g. ./gradlew :desktop:run -Dg3.media.debug=true
+        System.properties.findAll { it.key.toString().startsWith('g3.') }.each { systemProperty it.key, it.value }
+    }
+}
+
+// Build inputs of the run-time game build, shipped inside the app as one resource (byo.zip, see ByoBundle): our patches, the name mapping,
+// the pinned tools and our PortBridge. No game code and no game data of the original.
+def byoBundle = tasks.register('byoBundle', Zip) {
+    archiveFileName = 'byo.zip'
+    destinationDirectory = layout.buildDirectory.dir('generated/byo')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    from(rootProject.file('game-patches')) { into 'game-patches' }
+    from(rootProject.file('docs/mapping')) { into 'docs/mapping' }
+    dependsOn ':buildtools:fetchPipelineTools'   // pinned tools from Maven, SHA-256 verified (game-patches/build.properties)
+    from(project(':buildtools').pipelineToolsDir) { include 'tiny-remapper-*.jar', 'vineflower-*.jar'; into 'tools' }
+    from(rootProject.file('game/src/port/java')) { into 'game/src/port/java' }
+}
+tasks.named('processResources') {
+    from(byoBundle)
+    // our own 3D / post-processing data tables and LUTs (they used to ride along in the game jar)
+    from(project(':game').file('src/main/resources')) { include 'post/**', 'render3d/**' }
+}
+
+// ./gradlew :desktop:autotag [--args="--report"]  regenerates game/src/main/resources/render3d/tiles-auto.properties (docs/render3d.md, Auto tagger)
+tasks.register('autotag', JavaExec) {
+    group = 'render3d'
+    description = 'Generate render3d/tiles-auto.properties from the map data and tile pixels'
+    enabled = rootProject.ext.gameEnabled   // needs the generated game module (developer jar)
+    dependsOn ':game:jar'
+    classpath = sourceSets.main.runtimeClasspath + files(project(':game').layout.buildDirectory.file("libs/game-${project.version}.jar"))  // GameData reads the game resources from the classpath
+    mainClass = 'gothic3.desktop.render3d.autotag.AutoTagger'
+    workingDir = rootProject.projectDir
+    jvmArgs '-Djava.awt.headless=true'
+}
+
+// ---------------------------------------------------------------------------------------------
+// Packaging (docs/platform.md "Building & releases").  Version comes from gradle.properties.
+//   ./gradlew :desktop:dist        -> desktop/build/libs/gothic3-<version>.jar      (runnable fat jar, all OS natives)
+//   ./gradlew :desktop:installDist -> desktop/build/install/desktop/bin/desktop     (launcher scripts; needs a JDK on PATH)
+//   ./gradlew :desktop:packageApp  -> desktop/build/dist/gothic3-<version>-<os>-<arch>.(tar.gz|zip)
+//                                     self-contained jpackage app image with a jlink-trimmed runtime, for the OS it runs on
+// ---------------------------------------------------------------------------------------------
+def appName = 'Gothic3'
+def mainClassName = 'gothic3.desktop.DesktopLauncher'
+def osName = System.getProperty('os.name').toLowerCase()
+def isWin = osName.contains('win')
+def isMac = osName.contains('mac')
+def osId = isWin ? 'windows' : isMac ? 'macos' : 'linux'
+def archId = System.getProperty('os.arch').replace('amd64', 'x64').replace('x86_64', 'x64')
+def runtimeJvmArgs = ['-Djava.awt.headless=true', '-Dfile.encoding=UTF-8', '--enable-native-access=ALL-UNNAMED']
+if (isMac) runtimeJvmArgs += ['-XstartOnFirstThread']  // LWJGL3/GLFW needs the first thread on macOS
+
+tasks.register('dist', Jar) {
+    group = 'distribution'
+    description = 'Runnable fat jar (all dependencies, natives for Linux/Windows/macOS)'
+    archiveBaseName = 'gothic3'
+    destinationDirectory = layout.buildDirectory.dir('libs')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes('Main-Class': mainClassName, 'Enable-Native-Access': 'ALL-UNNAMED', 'Implementation-Version': project.version)
+    }
+    from(sourceSets.main.output)
+    dependsOn configurations.runtimeClasspath
+    from({ configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }) {
+        exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/MANIFEST.MF', 'module-info.class', 'META-INF/versions/*/module-info.class'
+    }
+}
+
+// Linux/Windows/macOS app image via jpackage (must run on the target OS). Modules: what libGDX + the game use.
+tasks.register('appImage', Exec) {
+    group = 'distribution'
+    description = 'jpackage app image with a bundled jlink runtime for the current OS'
+    dependsOn 'dist'
+    def outDir = layout.buildDirectory.dir('jpackage')
+    def inDir = layout.buildDirectory.dir('jpackage-input')
+    inputs.file(tasks.named('dist').flatMap { it.archiveFile })
+    outputs.dir(outDir)
+    doFirst {
+        delete outDir, inDir
+        copy { from(tasks.named('dist').get().archiveFile) into inDir; rename { 'gothic3.jar' } }
+        copy { from(rootProject.file('NOTICE')) into inDir }
+        // Minimal LGPL ffmpeg for the sound effects (scripts/ffmpeg/build-minimal-ffmpeg.sh), found by AmrConverter at <app dir>/ffmpeg/ffmpeg[.exe].
+        // -PffmpegDir=<out dir of the script> (or env G3_FFMPEG_DIR); without it the image has no ffmpeg and falls back to PATH.
+        def ffDir = providers.gradleProperty('ffmpegDir').orElse(providers.environmentVariable('G3_FFMPEG_DIR')).getOrNull()
+        if (ffDir) {
+            def ffExe = new File(ffDir, isWin ? 'ffmpeg.exe' : 'ffmpeg')
+            if (!ffExe.isFile()) throw new GradleException("ffmpegDir ${ffDir} has no ${ffExe.name}")
+            copy { from(ffDir) { exclude ffExe.name }; into inDir.get().dir('ffmpeg') }   // LICENSES/ rides along
+            copy { from(ffExe) into inDir.get().dir('ffmpeg'); filePermissions { unix('rwxr-xr-x') } }
+            logger.lifecycle("appImage: bundling ffmpeg from ${ffDir}")
+        } else {
+            logger.warn('appImage: no -PffmpegDir given, the image will not bundle ffmpeg (sound effects need ffmpeg on PATH)')
+        }
+        def v = project.version.toString()
+        // macOS requires a non-zero major version
+        def appVer = (isMac && v.startsWith('0.')) ? '1' + v.substring(1) : v
+        def cmd = [new File(System.getProperty('java.home'), 'bin/jpackage').path,
+                   '--type', 'app-image', '--name', appName, '--app-version', appVer,
+                   '--input', inDir.get().asFile.path, '--main-jar', 'gothic3.jar', '--main-class', mainClassName,
+                   '--dest', outDir.get().asFile.path,
+                   '--add-modules', 'java.base,jdk.compiler,java.desktop,java.logging,java.management,java.naming,java.prefs,java.sql,jdk.unsupported,jdk.crypto.ec',
+                   '--jlink-options', '--strip-debug --no-header-files --no-man-pages --compress zip-6',
+                   '--vendor', 'spartalos', '--description', 'Gothic 3: The Beginning PC port']
+        runtimeJvmArgs.each { cmd += ['--java-options', it] }
+        commandLine cmd
+    }
+}
+
+tasks.register('packageApp') {
+    group = 'distribution'
+    description = 'appImage zipped/tarred into build/dist/gothic3-<version>-<os>-<arch>'
+    dependsOn 'appImage'
+    def distDir = layout.buildDirectory.dir('dist')
+    doLast {
+        def base = "gothic3-${project.version}-${osId}-${archId}"
+        def src = layout.buildDirectory.dir('jpackage').get().asFile
+        distDir.get().asFile.mkdirs()
+        def cmd = isWin ? ['powershell', '-NoProfile', '-Command',
+                           "Compress-Archive -Force -Path '${src}\\${appName}' -DestinationPath '${distDir.get().asFile}\\${base}.zip'"]
+                : isMac ? ['ditto', '-c', '-k', '--keepParent', "${src}/${appName}.app", "${distDir.get().asFile}/${base}.zip"]
+                : ['tar', '-C', src.path, '-czf', "${distDir.get().asFile}/${base}.tar.gz", appName]
+        def pr = new ProcessBuilder(cmd*.toString()).inheritIO().start()
+        if (pr.waitFor() != 0) throw new GradleException("archiving failed: ${cmd}")
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Guard: the shipped fat jar and app image must contain no g3 game classes and nothing derived from the user's jar
+// (docs/byo-jar.md). `check` verifies the fat jar, `packageApp` also the app image.
+// ---------------------------------------------------------------------------------------------
+def forbiddenEntry = { String n ->
+    n.startsWith('g3/') || n ==~ /(.*\/)?[^\/]*\.(lng|mid|amr|mdl)/ || n ==~ /(a|c|d|f|i|ldf|s00\.png|s01\.png|icon\.png)/ || n ==~ /audio\/.*\.wav/
+}
+def scanJar = { File jarFile, List<String> bad ->
+    new java.util.zip.ZipFile(jarFile).withCloseable { z ->
+        z.entries().each { e -> if (!e.isDirectory() && forbiddenEntry(e.name)) bad << "${jarFile.name}!/${e.name}" }
+    }
+}
+tasks.register('checkNoGameContent') {
+    group = 'verification'
+    description = 'Fails if the runnable fat jar contains g3 game classes or jar-derived game resources'
+    dependsOn 'dist'
+    def jarFile = tasks.named('dist').flatMap { it.archiveFile }
+    doLast {
+        def bad = []
+        scanJar(jarFile.get().asFile, bad)
+        if (bad) throw new GradleException("the fat jar contains game content (bring-your-own-jar):\n  " + bad.take(30).join('\n  '))
+        logger.lifecycle("checkNoGameContent: ${jarFile.get().asFile.name} has no g3 classes or jar-derived resources")
+    }
+}
+tasks.register('checkNoGameContentImage') {
+    group = 'verification'
+    description = 'Fails if the jpackage app image contains g3 game classes or jar-derived game resources'
+    dependsOn 'appImage'
+    def imgDir = layout.buildDirectory.dir('jpackage')
+    doLast {
+        def bad = []
+        imgDir.get().asFile.eachFileRecurse { f ->
+            if (!f.isFile()) return
+            if (f.name.endsWith('.jar')) scanJar(f, bad)
+            else if (f.name ==~ /.*\.(lng|mid|amr|mdl)/) bad << f.path
+        }
+        if (bad) throw new GradleException("the app image contains game content (bring-your-own-jar):\n  " + bad.take(30).join('\n  '))
+        logger.lifecycle('checkNoGameContentImage: the app image has no g3 classes or jar-derived resources')
+    }
+}
+tasks.named('check') { dependsOn 'checkNoGameContent' }
+tasks.named('packageApp') { dependsOn 'checkNoGameContentImage' }

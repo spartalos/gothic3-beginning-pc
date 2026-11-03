@@ -1,0 +1,268 @@
+--- a/g3/Gothic3Midlet.java
++++ b/g3/Gothic3Midlet.java
+@@ -2,0 +3,3 @@
++// PORT: all resource loads go through gothic3.platform.Platform.openResource, which returns fully
++// buffered streams like a J2ME handset (full reads, exact skip); JDK jar streams do not.
++
+@@ -28 +31 @@
+-   public static final Random RANDOM = new Random();
++   public static final Random RANDOM = gothic3.port.Port.newGameRandom(); // PORT: snapshot-able RNG with identical sequence; -Dg3.fixedSeed
+@@ -113 +116 @@
+-         InputStream var3 = instance.getClass().getResourceAsStream(var0);
++         InputStream var3 = gothic3.platform.Platform.openResource(var0);
+@@ -250,0 +254 @@
++      int var14; // DECOMP-FIX: hoisted declaration (used after loop)
+@@ -312 +316 @@
+-         var3 = instance.getClass().getResourceAsStream("/mi");
++         var3 = gothic3.platform.Platform.openResource("/mi");
+@@ -360 +364 @@
+-         DataInputStream var1 = new DataInputStream(openResource("c"));
++         DataInputStream var1 = new DataInputStream(openResource("/c")) /* PORT: absolute resource name */;
+@@ -381 +385 @@
+-         DataInputStream var6 = new DataInputStream(openResource("f"));
++         DataInputStream var6 = new DataInputStream(openResource("/f")) /* PORT: absolute resource name */;
+@@ -388 +392 @@
+-            byte var9 = 0;
++            int var9 = 0; // DECOMP-FIX: narrow->int
+@@ -531,0 +536 @@
++      byte[] var4; // DECOMP-FIX: hoisted declaration
+@@ -623 +628 @@
+-         var3 = instance.getClass().getResourceAsStream("/ldf");
++         var3 = gothic3.platform.Platform.openResource("/ldf");
+@@ -724 +729 @@
+-         var3 = instance.getClass().getResourceAsStream(var1);
++         var3 = gothic3.platform.Platform.openResource(var1);
+@@ -743,0 +749,3 @@
++               if (var0 == 0 && var17 == 400) { // PORT: "Background music" now selects music + sound effects (setting 5); relabel (docs/audio.md)
++                  langStrings[var0][var17] = langStrings[var0][var17] + " + SFX";
++               }
+@@ -787 +795 @@
+-               for (byte var8 = 0; var8 < var10.length - 1; var8 += 2) {
++               for (int var8 = 0; var8 < var10.length - 1; var8 += 2) {
+@@ -864 +872 @@
+-               var17 = instance.getClass().getResourceAsStream(var12);
++               var17 = gothic3.platform.Platform.openResource(var12);
+@@ -925 +933,2 @@
+-            if (soundState[var2] == 0) {
++            if (soundState[var2] == 0
++               && !(isSettingOn(5) && (soundDefs[var2][4] >> 3 & 1) != (soundDefs[var4][4] >> 3 & 1))) { // PORT: music+sfx mode: music and sound effects do not block each other
+@@ -934 +943 @@
+-         int var9 = 0;
++         boolean var9 = false; // DECOMP-FIX: boolean/int slot reuse
+@@ -936,2 +945 @@
+-            var9 = soundDefs[var4][3];
+-            var9 = var9 > var3;
++            var9 = soundDefs[var4][3] > var3;
+@@ -943,0 +952 @@
++            boolean var11; // DECOMP-FIX: hoisted declaration
+@@ -1163 +1172 @@
+-            int var9 = soundDefs[var5][3] < var7;
++            boolean var9 = soundDefs[var5][3] < var7; // DECOMP-FIX: boolean/int slot reuse
+@@ -1165 +1174 @@
+-               var9 = 0;
++               var9 = false;
+@@ -1169 +1178,3 @@
+-               var9 = 1;
++               var9 = true;
++            } else if (isSettingOn(5) && (soundDefs[var5][4] >> 3 & 1) != (soundDefs[findSoundIndex(var0)][4] >> 3 & 1)) {
++               var9 = false; // PORT: music+sfx mode: a sound effect never stops the music and vice versa
+@@ -1174,3 +1185,3 @@
+-               var9 = soundDefs[var5][4];
+-               boolean var3 = (var9 >> 3 & 1) == 1;
+-               boolean var2 = (var9 >> 4 & 1) == 1;
++               int var9i = soundDefs[var5][4];
++               boolean var3 = (var9i >> 3 & 1) == 1;
++               boolean var2 = (var9i >> 4 & 1) == 1;
+@@ -1195,0 +1207,8 @@
++            if (isSettingOn(5)) { // PORT: music+sfx mode: stop only the sounds of the same kind (music / effect) as the one being stopped
++               boolean var9m = (soundDefs[var1][4] >> 3 & 1) == 1;
++               for (int var8 = 0; var8 < soundCount; var8++) {
++                  if (((soundDefs[var8][4] >> 3 & 1) == 1) == var9m) {
++                     stopSound(soundSlots[var8][0]);
++                  }
++               }
++            } else {
+@@ -1196,0 +1216 @@
++            }
+@@ -1223 +1243 @@
+-         int var7 = soundState[var0] == 2;
++         boolean var7 = soundState[var0] == 2; // DECOMP-FIX: boolean/int slot reuse
+@@ -1238,2 +1258,2 @@
+-                     var7 = soundDefs[var10][5];
+-                     if (var7 == var4 && var6 != soundDefs[var10][0]) {
++                     int var7i = soundDefs[var10][5];
++                     if (var7i == var4 && var6 != soundDefs[var10][0]) {
+@@ -1245,2 +1265,2 @@
+-               var7 = var11.size();
+-               if (var7 > 1) {
++               int var7i = var11.size();
++               if (var7i > 1) {
+@@ -1248 +1268 @@
+-                     var5 = (Integer)var11.elementAt(randomBelow(var7));
++                     var5 = (Integer)var11.elementAt(randomBelow(var7i));
+@@ -1275 +1295,5 @@
+-         if (soundDeferred) {
++         if (soundDeferred && isSettingOn(5) && (soundDefs[findSoundIndex(var0)][4] >> 3 & 1) == 1) {
++            if (gothic3.platform.StartupPrefs.pendingMusicId < 0) { // PORT: music+sfx mode (setting 5): music gets its own pending slot, so a same-tick effect cannot drop it; separate pending slot for music (first request of a tick wins, as for effects)
++               gothic3.platform.StartupPrefs.pendingMusicId = var0;
++            }
++         } else if (soundDeferred) {
+@@ -1304,0 +1329,6 @@
++
++      if (gothic3.platform.StartupPrefs.pendingMusicId >= 0) { // PORT: music+sfx mode pending music (see requestSound)
++         int var0m = gothic3.platform.StartupPrefs.pendingMusicId;
++         gothic3.platform.StartupPrefs.pendingMusicId = -1;
++         startSound(var0m);
++      }
+@@ -1415 +1445 @@
+-         InputStream var5 = "".getClass().getResourceAsStream(var0);
++         InputStream var5 = gothic3.platform.Platform.openResource(var0); // PORT: was "".getClass() (String.class lives in java.base on desktop)
+@@ -1708 +1738 @@
+-      byte var6 = 4;
++      int var6 = 4; // DECOMP-FIX: narrow->int
+@@ -1727 +1757 @@
+-      int var8 = (var1 & 32) != 0 && (GameWorld.entities[GameEngine.interactEntity][13] & 2) != 0;
++      boolean var8b = (var1 & 32) != 0 && (GameWorld.entities[GameEngine.interactEntity][13] & 2) != 0; // DECOMP-FIX: boolean/int slot reuse
+@@ -1733 +1763 @@
+-      } else if (var8) {
++      } else if (var8b) {
+@@ -1741 +1771 @@
+-      var8 = 0;
++      int var8 = 0;
+@@ -2339,2 +2369,2 @@
+-            var2 = (var7 + 5 - var8 >> 1) + 1;
+-            GameEngine.drawSpriteScreenSimple(contentX + 3, var3 + var2, 150, var10, var0);
++            int var2i = (var7 + 5 - var8 >> 1) + 1;
++            GameEngine.drawSpriteScreenSimple(contentX + 3, var3 + var2i, 150, var10, var0);
+@@ -2353,2 +2383,2 @@
+-            var2 = (var7 + 5 - var8 >> 1) + 1;
+-            GameEngine.drawSpriteScreenSimple(contentX + 3, var3 + var2, 150, var10, var0);
++            int var2i = (var7 + 5 - var8 >> 1) + 1;
++            GameEngine.drawSpriteScreenSimple(contentX + 3, var3 + var2i, 150, var10, var0);
+@@ -2519,0 +2550,3 @@
++   // PORT: second startup question (2D/3D), shown with menu 17's layout after the sound question (see gothic3.platform.StartupPrefs)
++   // (the flag lives in StartupPrefs.gfxPhase: a new static here would change the state hash)
++
+@@ -2520,0 +2554,7 @@
++      if (gothic3.platform.StartupPrefs.gfxPhase && (var0 == 9 || var0 == 10)) { // PORT: answer to the graphics question: 9 = 2D, 10 = 3D
++         gothic3.platform.StartupPrefs.gfxPhase = false;
++         gothic3.platform.StartupPrefs.onGraphics.accept(var0 == 10);
++         gothic3.platform.StartupPrefs.onFinished.run();
++         canvas.setState(2);
++         return;
++      }
+@@ -2531 +2571 @@
+-            new Thread(GameEngine.loaderTask).start();
++            gothic3.port.Port.startLoader(GameEngine.loaderTask); // PORT: synchronous in deterministic mode
+@@ -2558 +2598 @@
+-               if (openMoreInfoUrl()) {
++               if (openMoreInfoUrl()) { // DECOMP-FIX: boolean return
+@@ -2601 +2641 @@
+-               setSetting(1, 1);
++               setSetting(5, 1); // PORT: was setSetting(1, 1): music + sound effects
+@@ -2605 +2645 @@
+-            canvas.setState(2);
++            portAfterSoundAnswer(true); // PORT: was canvas.setState(2)
+@@ -2610 +2650 @@
+-            canvas.setState(2);
++            portAfterSoundAnswer(false); // PORT: was canvas.setState(2)
+@@ -2844 +2884 @@
+-            new Thread(GameEngine.loaderTask).start();
++            gothic3.port.Port.startLoader(GameEngine.loaderTask); // PORT: synchronous in deterministic mode
+@@ -2893 +2933 @@
+-            new Thread(GameEngine.loaderTask).start();
++            gothic3.port.Port.startLoader(GameEngine.loaderTask); // PORT: synchronous in deterministic mode
+@@ -2905 +2945 @@
+-            new Thread(GameEngine.loaderTask).start();
++            gothic3.port.Port.startLoader(GameEngine.loaderTask); // PORT: synchronous in deterministic mode
+@@ -2919 +2959 @@
+-            new Thread(GameEngine.loaderTask).start();
++            gothic3.port.Port.startLoader(GameEngine.loaderTask); // PORT: synchronous in deterministic mode
+@@ -3282 +3322 @@
+-            if (isSettingOn(1)) {
++            if (isSettingOn(1) || isSettingOn(5)) { // PORT: "Background music" entry = music + sound effects (setting 5)
+@@ -3324 +3364 @@
+-               setSetting(1, 1);
++               setSetting(5, 1); // PORT: was setSetting(1, 1): music + sound effects
+@@ -3348 +3388 @@
+-      byte var3 = 0;
++      int var3 = 0; // DECOMP-FIX: narrow->int
+@@ -3362 +3402 @@
+-      byte var3 = 0;
++      int var3 = 0; // DECOMP-FIX: narrow->int
+@@ -3376,0 +3417,3 @@
++      if (gothic3.platform.StartupPrefs.gfxPhase && var0 == 17) { // PORT: graphics question text (menu 17 = title, 1st choice, 2nd choice)
++         return var1 == 0 ? "Graphics?" : var1 == 1 ? "2D (original)" : "3D";
++      }
+@@ -3378,2 +3421,2 @@
+-      var1 = var2[(var1 << 2) + 0];
+-      if (var1 >= 0) {
++      int var1i = var2[(var1 << 2) + 0]; // DECOMP-FIX: param slot reused as int (avoids i2s narrowing of |= 262144)
++      if (var1i >= 0) {
+@@ -3381 +3424 @@
+-            var1 |= 262144;
++            var1i |= 262144;
+@@ -3384 +3427 @@
+-         var3 = getText(var1);
++         var3 = getText(var1i);
+@@ -3432 +3475 @@
+-         for (byte var3 = 0; var3 < var2.length; var3 += 4) {
++         for (int var3 = 0; var3 < var2.length; var3 += 4) {
+@@ -3469,2 +3512,2 @@
+-      int var0 = countSelectableEntries(currentMenu) > 0;
+-      if (var0) {
++      boolean var0b = countSelectableEntries(currentMenu) > 0; // DECOMP-FIX: boolean/int slot reuse
++      if (var0b) {
+@@ -3473 +3516 @@
+-         var0 = var2.length / 4;
++         int var0 = var2.length / 4;
+@@ -3507 +3550 @@
+-      int var0 = countSelectableEntries(currentMenu) > 0;
++      boolean var0b = countSelectableEntries(currentMenu) > 0; // DECOMP-FIX: boolean/int slot reuse
+@@ -3509 +3552,2 @@
+-      if (var0) {
++      if (var0b) {
++         int var0;
+@@ -3753,5 +3797,5 @@
+-                     int var34 = (var23 & 2) == 2 || (var23 & 1) == 1;
+-                     int var31 = (var23 & 4) == 4 || (var23 & 1) == 1;
+-                     int var24 = (var23 & 8) == 8 || (var23 & 1) == 1;
+-                     if (var34) {
+-                        GameEngine.drawMenuBackground(var0, (boolean)var31, (boolean)var24, true, GameEngine.menuFrameImage);
++                     boolean var34b = (var23 & 2) == 2 || (var23 & 1) == 1; // DECOMP-FIX: boolean/int slot reuse
++                     boolean var31b = (var23 & 4) == 4 || (var23 & 1) == 1;
++                     boolean var24b = (var23 & 8) == 8 || (var23 & 1) == 1;
++                     if (var34b) {
++                        GameEngine.drawMenuBackground(var0, var31b, var24b, true, GameEngine.menuFrameImage);
+@@ -3762,3 +3806,3 @@
+-                           var34 = GameEngine.screenWidth - var37 - 1 - 7;
+-                           var31 = (byte)(GameEngine.fontMetrics[2] >> 16 & 0xFF) + 5 + 5;
+-                           var24 = GameEngine.screenHeight - var31 - (GameEngine.imageTable[1387] - var31 >> 1) - GameEngine.imageTable[1607];
++                           int var34 = GameEngine.screenWidth - var37 - 1 - 7;
++                           int var31 = (byte)(GameEngine.fontMetrics[2] >> 16 & 0xFF) + 5 + 5;
++                           int var24 = GameEngine.screenHeight - var31 - (GameEngine.imageTable[1387] - var31 >> 1) - GameEngine.imageTable[1607];
+@@ -3882,0 +3927,14 @@
++   // PORT: after the sound answer: remember it; interactive first run asks the graphics question next, otherwise on to the splash screens
++   static void portAfterSoundAnswer(boolean soundOn) {
++      if (gothic3.platform.StartupPrefs.active) {
++         gothic3.platform.StartupPrefs.onSound.accept(soundOn);
++         if (gothic3.platform.StartupPrefs.askGraphics) {
++            gothic3.platform.StartupPrefs.gfxPhase = true;
++            showMenu(17);
++            return;
++         }
++         gothic3.platform.StartupPrefs.onFinished.run();
++      }
++      canvas.setState(2);
++   }
++
+@@ -3895,0 +3954,6 @@
++
++         if (settings[1] == 1) { // PORT: older saves/settings: music-only (1) now means music + sound effects (5); the record is rewritten on the next saveSettings
++            settings[1] = 0;
++            settings[2] = 0;
++            settings[5] = 1;
++         }
+@@ -3955,0 +4020,2 @@
++         // PORT: lets the presenter know when the settings menu (menu 2) is showing, to draw the hotkey hint footer (read only)
++         gothic3.platform.StartupPrefs.settingsMenuVisible = () -> menuInputEnabled && (currentMenu == 2 || currentMenu == 0 || currentMenu == 14) && GameEngine.gameState != 3;

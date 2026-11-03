@@ -1,0 +1,15 @@
+build/
+.gradle/
+*.class
+out/
+.idea/
+*.iml
+local.properties
+/Gothic3-TheBeginning_s40v3a.jar
+/work/
+/game/gen/
+
+# bring-your-own jar: developers keep their own copy here, never committed
+/original/*
+.lwjgl/
+.claude/

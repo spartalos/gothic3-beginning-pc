@@ -1,0 +1,18 @@
+allprojects { group = 'gothic3' }
+
+subprojects {
+    apply plugin: 'java-library'
+    repositories { mavenCentral() }
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.release = 17
+    }
+}
+
+// The game module (decompiled original, generated from the developer's own copy of the original jar) is optional:
+// without a jar (CI, releases, fresh clones) it is skipped and nothing else depends on it at compile time.
+def gameJarProp = providers.gradleProperty('gameJar')
+ext.gameJarFile = gameJarProp.isPresent() ? file(gameJarProp.get()) : file('original/Gothic3-TheBeginning_s40v3a.jar')
+if (gameJarProp.isPresent() && !ext.gameJarFile.isFile()) throw new GradleException("-PgameJar=${gameJarProp.get()}: file not found")
+// -PnoGame forces the jar-less build (CI and releases), even while a jar sits in original/
+ext.gameEnabled = ext.gameJarFile.isFile() && !providers.gradleProperty('noGame').isPresent()

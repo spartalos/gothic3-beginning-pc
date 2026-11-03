@@ -1,0 +1,151 @@
+# smoke-ticks.script + a long walk (movement, direction changes, attack) for interpolation checks. Tick based.
+# wait N ms -> waitticks N/100; tap K -> tapticks K 2 1 (hold 2 ticks, wait 1).
+waitticks 80
+tapticks FIRE 2 1
+waitticks 35
+shot 01_main_menu
+tapticks FIRE 2 1
+waitticks 30
+shot 02_intro_dialogue
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d04
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d09
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d14
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d19
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d24
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d29
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d34
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+tapticks FIRE 2 1
+waitticks 9
+shot d39
+press RIGHT
+waitticks 8
+release RIGHT
+shot 90_moved_right
+press DOWN
+waitticks 8
+release DOWN
+shot 91_moved_down
+
+# --- walk around (about 70 s of game time) ---
+press RIGHT
+waitticks 40
+release RIGHT
+waitticks 5
+press DOWN
+waitticks 40
+release DOWN
+waitticks 5
+tapticks FIRE 1 3
+press LEFT
+waitticks 60
+release LEFT
+waitticks 5
+press UP
+waitticks 50
+release UP
+waitticks 5
+press NUM9
+waitticks 30
+release NUM9
+waitticks 5
+tapticks FIRE 1 3
+tapticks FIRE 1 3
+press NUM1
+waitticks 30
+release NUM1
+waitticks 5
+press RIGHT
+waitticks 60
+release RIGHT
+waitticks 10
+press DOWN
+waitticks 50
+release DOWN
+waitticks 10
+tapticks FIRE 1 3
+tapticks FIRE 1 3
+tapticks FIRE 1 3
+press LEFT
+waitticks 40
+release LEFT
+waitticks 20
+shot walk_end
+exit

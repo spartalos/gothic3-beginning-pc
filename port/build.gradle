@@ -1,0 +1,5 @@
+// Our own hooks API + port logic (fixed-step loop, tick tracing, 3D capture glue). Contains no game code:
+// the (decompiled) game module implements gothic3.port.GameBridge and registers it via GameHooks.
+dependencies {
+    api project(':midp')
+}

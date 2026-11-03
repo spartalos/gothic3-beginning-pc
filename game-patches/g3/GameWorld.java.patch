@@ -1,0 +1,79 @@
+--- a/g3/GameWorld.java
++++ b/g3/GameWorld.java
+@@ -2,0 +3,3 @@
++// PORT: all resource loads go through gothic3.platform.Platform.openResource, which returns fully
++// buffered streams like a J2ME handset (full reads, exact skip); JDK jar streams do not.
++
+@@ -537 +540 @@
+-         for (byte var2 = 0; var2 < GameEngine.navGrid.length; var2 += 3) {
++         for (int var2 = 0; var2 < GameEngine.navGrid.length; var2 += 3) {
+@@ -680 +683 @@
+-               var3 = new DataInputStream(Gothic3Midlet.instance.getClass().getResourceAsStream("d"));
++               var3 = new DataInputStream(gothic3.platform.Platform.openResource("/d")) /* PORT: absolute resource name */;
+@@ -710 +713 @@
+-         var6 = new DataInputStream(Gothic3Midlet.instance.getClass().getResourceAsStream("d"));
++         var6 = new DataInputStream(gothic3.platform.Platform.openResource("/d")) /* PORT: absolute resource name */;
+@@ -792,2 +795,2 @@
+-      var3 = var0.readByte();
+-      switch (var3) {
++      byte var3i = var0.readByte(); // DECOMP-FIX: boolean param slot reused as byte
++      switch (var3i) {
+@@ -820,2 +823,2 @@
+-                     var3 = -1 << 16 * var1;
+-                     var2[var8][var9] = var2[var8][var9] | var3 & 65535 << 16 * var1;
++                     int var3x = -1 << 16 * var1;
++                     var2[var8][var9] = var2[var8][var9] | var3x & 65535 << 16 * var1;
+@@ -1942 +1945 @@
+-      byte var8 = 0;
++      int var8 = 0; // DECOMP-FIX: narrow->int
+@@ -2296 +2299 @@
+-      byte var3 = 0;
++      int var3 = 0; // DECOMP-FIX: narrow->int
+@@ -2622 +2625 @@
+-            byte var0;
++            int var0; // DECOMP-FIX: byte->int (slot holds int then array byte value)
+@@ -3223,2 +3226,2 @@
+-            var0 = monsterGroupSize[var1];
+-            monsterGroupSize[var1] = reserveSpawnCells(var0);
++            int var0i = monsterGroupSize[var1]; // DECOMP-FIX: boolean param slot reused as int
++            monsterGroupSize[var1] = reserveSpawnCells(var0i);
+@@ -3233,2 +3236,2 @@
+-               var0 = Gothic3Midlet.randomBelow(monsterGroupCandidateCount[var5]);
+-               int var3 = monsterGroupCandidates[var5][var0];
++               int var0i = Gothic3Midlet.randomBelow(monsterGroupCandidateCount[var5]); // DECOMP-FIX: boolean/int slot reuse
++               int var3 = monsterGroupCandidates[var5][var0i];
+@@ -3711 +3714 @@
+-                     byte var2 = 1;
++                     int var2 = 1; // DECOMP-FIX: narrow->int
+@@ -3773 +3776 @@
+-                        int var19 = 0;
++                        boolean var19 = false; // DECOMP-FIX: boolean/int slot reuse
+@@ -3776 +3779 @@
+-                           var19 = var11 + Gothic3Midlet.randomBelow(var4);
++                           int var19i = var11 + Gothic3Midlet.randomBelow(var4);
+@@ -3778 +3781 @@
+-                              var9[3 * var19 + 2] = (byte)(var9[3 * var19 + 2] | 4);
++                              var9[3 * var19i + 2] = (byte)(var9[3 * var19i + 2] | 4);
+@@ -3780 +3783 @@
+-                              var9[3 * var19 + 2] = (byte)(var9[3 * var19 + 2] | 2);
++                              var9[3 * var19i + 2] = (byte)(var9[3 * var19i + 2] | 2);
+@@ -3783 +3786 @@
+-                           var19 = 1;
++                           var19 = true;
+@@ -4345,4 +4348,4 @@
+-               int var12 = (var4[13] & 1024) != 0;
+-               int var7 = (var4[13] & 512) != 0;
+-               if (var7 && var12) {
+-                  var7 = Gothic3Midlet.randomBelow(100);
++               boolean var12b = (var4[13] & 1024) != 0; // DECOMP-FIX: boolean/int slot reuse
++               boolean var7b = (var4[13] & 512) != 0;
++               if (var7b && var12b) {
++                  int var7 = Gothic3Midlet.randomBelow(100);
+@@ -4356 +4359 @@
+-               } else if (var7) {
++               } else if (var7b) {
+@@ -4358,2 +4361,2 @@
+-               } else if (var12) {
+-                  var12 = 0;
++               } else if (var12b) {
++                  int var12 = 0;

@@ -1,0 +1,33 @@
+name: Minimal ffmpeg
+description: >
+  Builds (or restores from cache) the minimal AMR-NB -> WAV ffmpeg of scripts/ffmpeg/build-minimal-ffmpeg.sh into ffmpeg-out/
+  and smoke-tests it. Run after actions/checkout on the target OS.
+
+runs:
+  using: composite
+  steps:
+    - name: Restore cached ffmpeg
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ffmpeg-out
+        # the script pins the ffmpeg and opencore-amr versions, so its hash is the version key
+        key: minimal-ffmpeg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/ffmpeg/build-minimal-ffmpeg.sh') }}
+    - name: Set up MSYS2 (Windows)
+      if: steps.cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: false
+        install: make diffutils pkgconf curl xz tar mingw-w64-x86_64-gcc
+    - name: Build minimal ffmpeg (Linux / macOS)
+      if: steps.cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
+      shell: bash
+      run: scripts/ffmpeg/build-minimal-ffmpeg.sh ffmpeg-out "${RUNNER_TEMP}/ffmpeg-work"
+    - name: Build minimal ffmpeg (Windows, MSYS2)
+      if: steps.cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
+      shell: msys2 {0}
+      run: scripts/ffmpeg/build-minimal-ffmpeg.sh ffmpeg-out /tmp/ffmpeg-work
+    - name: Smoke test (version, dependencies, synthetic AMR decode)
+      shell: bash
+      run: scripts/ffmpeg/test-minimal-ffmpeg.sh ffmpeg-out

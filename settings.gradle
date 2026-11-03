@@ -1,0 +1,2 @@
+rootProject.name = 'gothic3-pc'
+include 'midp', 'port', 'buildtools', 'game', 'desktop'

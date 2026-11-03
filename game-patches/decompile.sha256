@@ -1,0 +1,6 @@
+# SHA-256 of the raw decompile output (remap + Vineflower, before patches). setupGame fails if any differs.
+1d42d9e8d7dcddbb4e01b034a848717bb409209a55f91d43352c39e5e314163f  g3/GameEngine.java
+d214c27187972e547c5ef51b6f2cf1955260d36a0cf52cb2760383777163a9af  g3/GameWorld.java
+1ec432b67eb4cdd8c7ca246b9bdea38fb1e15d1eaf054e204a1898245778adf0  g3/Gothic3Midlet.java
+d2823742359be3033713bae4d42b9dedad568f4bdf38b0e49512c8be68f3ab7b  g3/LoadTask.java
+3c864ea18488133aaa13feed293b57cec386693159eb30d34fbab8b0eedcfbfb  g3/SoundThread.java

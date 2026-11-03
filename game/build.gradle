@@ -1,0 +1,78 @@
+// The game module is GENERATED from the user's own copy of the original jar (see docs/byo-jar.md):
+//   ./gradlew setupGame [-PgameJar=path/to/Gothic3-TheBeginning_s40v3a.jar]
+// verifies the jar (SHA-256), remaps + decompiles it with the pinned tools, applies game-patches/, extracts the resources
+// (and converts the AMR sounds to WAV) into game/gen/. Compilation uses game/gen/src (package g3) plus our own
+// game/src/port/java; resources come from game/gen/resources plus our own files in game/src/main/resources.
+evaluationDependsOn(':buildtools')
+def genDir = file('gen')
+def gameJarFile = rootProject.ext.gameJarFile
+def gameEnabled = rootProject.ext.gameEnabled
+ext.gameEnabled = gameEnabled
+if (!gameEnabled) {
+    logger.lifecycle('game: no game jar (-PgameJar=... or original/Gothic3-TheBeginning_s40v3a.jar) - the :game module is skipped (setupGame, compile, jar)')
+}
+// every task of this module that needs the generated tree is switched off when there is no jar
+tasks.matching { it.name in ['setupGame', 'makePatches', 'recordDecompileHashes', 'compileJava', 'processResources', 'jar'] }.configureEach {
+    enabled = gameEnabled
+}
+
+dependencies {
+    api project(':port')
+}
+
+def buildtoolsRun = { String cmd, List<String> extra = [] ->
+    return {
+        classpath = project(':buildtools').sourceSets.main.runtimeClasspath
+        systemProperty 'g3.tools.dir', project(':buildtools').pipelineToolsDir.get().asFile.path
+        dependsOn ':buildtools:fetchPipelineTools'
+        mainClass = 'gothic3.buildtools.GameSetup'
+        workingDir = rootProject.projectDir
+        args = [cmd, '--root', rootProject.projectDir.absolutePath] + extra
+    }
+}
+
+tasks.register('setupGame', JavaExec) {
+    group = 'game'
+    description = 'Generate game/gen (sources + resources) from the original jar: -PgameJar=<path> [-Pforce]'
+    dependsOn ':buildtools:classes'
+    configure(buildtoolsRun('setup'))
+    doFirst {
+        args = args + ['--jar', gameJarFile.absolutePath] + (project.hasProperty('force') ? ['--force'] : [])
+    }
+}
+
+tasks.register('makePatches', JavaExec) {
+    group = 'game'
+    description = 'Regenerate game-patches/g3/*.patch from the edited sources in game/gen/src'
+    dependsOn ':buildtools:classes'
+    configure(buildtoolsRun('makepatches'))
+}
+
+sourceSets {
+    main {
+        java.setSrcDirs([new File(genDir, 'src'), file('src/port/java')])
+        resources.setSrcDirs([new File(genDir, 'resources')])
+    }
+}
+tasks.named('processResources') {
+    dependsOn 'setupGame'
+    // nothing of src/main/resources is packaged here: our own render3d/post resources belong to the desktop app (desktop/build.gradle), so the game jar equals the one built at run time from the user's jar
+}
+tasks.named('compileJava') { dependsOn 'setupGame' }
+
+// MIDlet attributes (MIDlet-Name, MIDlet-Version, ...) for MIDlet.getAppProperty, from the manifest setupGame extracted.
+jar {
+    dependsOn 'setupGame'
+    manifest { from(new File(genDir, 'manifest/MANIFEST.MF')) }
+}
+
+// Maintainers only: pin the raw decompile output (after the pipeline/mapping/tools changed on purpose).
+tasks.register('recordDecompileHashes', JavaExec) {
+    group = 'game'
+    description = 'Rewrite game-patches/decompile.sha256 from game/gen/pristine (run `setupGame -Pforce` against the matching jar first)'
+    dependsOn ':buildtools:classes'
+    configure(buildtoolsRun('record'))
+}
+
+// The 2008 code boxes with new Integer(...) etc.; keep it as decompiled, without the noise.
+tasks.withType(JavaCompile).configureEach { options.compilerArgs << '-Xlint:-removal' << '-Xlint:-deprecation' }

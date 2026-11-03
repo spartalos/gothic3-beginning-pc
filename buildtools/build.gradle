@@ -1,0 +1,44 @@
+// Developer/build-time tooling (not part of the shipped app): generates the game module from the user's jar,
+// applies game-patches/, extracts resources, regenerates patches. See docs/byo-jar.md.
+
+// ---------------------------------------------------------------------------------------------
+// Pinned decompile tools (Vineflower, tiny-remapper): fetched from Maven (not committed) and verified against the SHA-256 in
+// game-patches/build.properties. Consumers: GameSetup (setupGame & co, via -Dg3.tools.dir) and the run-time bundle (:desktop:byoBundle).
+// ---------------------------------------------------------------------------------------------
+def pins = new Properties()
+rootProject.file('game-patches/build.properties').withInputStream { pins.load(it) }
+configurations { pipelineTools { canBeConsumed = false; canBeResolved = true; transitive = false } }
+repositories {
+    exclusiveContent {
+        forRepository { maven { url = 'https://maven.fabricmc.net/' } }
+        filter { includeGroup 'net.fabricmc' }
+    }
+}
+dependencies {
+    pipelineTools pins.getProperty('tiny-remapper.maven')
+    pipelineTools pins.getProperty('vineflower.maven')
+}
+ext.pipelineToolsDir = rootProject.layout.buildDirectory.dir('pipeline-tools')
+tasks.register('fetchPipelineTools') {
+    group = 'game'
+    description = 'Download Vineflower + tiny-remapper from Maven and verify their SHA-256 (game-patches/build.properties)'
+    def outDir = pipelineToolsDir
+    inputs.files(configurations.pipelineTools)
+    inputs.file(rootProject.file('game-patches/build.properties'))
+    outputs.dir(outDir)
+    doLast {
+        def dir = outDir.get().asFile
+        project.delete(dir)
+        dir.mkdirs()
+        ['tiny-remapper', 'vineflower'].each { key ->
+            def want = pins.getProperty(key + '.sha256')
+            def name = new File(pins.getProperty(key + '.path')).name
+            def art = configurations.pipelineTools.resolvedConfiguration.resolvedArtifacts.find { it.file.name == name }
+            if (art == null) throw new GradleException("pinned tool ${name} (${pins.getProperty(key + '.maven')}) was not resolved")
+            def got = java.security.MessageDigest.getInstance('SHA-256').digest(art.file.bytes).encodeHex().toString()
+            if (got != want) throw new GradleException("SHA-256 mismatch for ${name}: expected ${want}, got ${got}")
+            new File(dir, name).bytes = art.file.bytes
+        }
+        logger.lifecycle("fetchPipelineTools: tiny-remapper + vineflower verified in ${dir}")
+    }
+}

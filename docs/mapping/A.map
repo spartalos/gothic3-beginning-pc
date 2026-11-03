@@ -1,0 +1,560 @@
+# A -> GameEngine  (see docs/analysis/A.md)
+class A GameEngine  # GameCanvas+Runnable: main loop, input, state machine, world update+render, entity/script/combat systems
+field A a LHG; midlet  # owning MIDlet (HG)
+field A b Z running  # main loop continue flag
+field A c Z paused  # pause / cheat-entry screen active (key 0 toggles, hideNotify sets)
+field A d J frameStartTime  # System.currentTimeMillis at frame start
+field A e Ljava/lang/Thread; gameThread  # thread running this Runnable
+field A f I screenWidth  # canvas width (also set by sizeChanged)
+field A g I screenHeight  # canvas height
+field A h J cheatCodeBuffer  # nibble-shifted key history compared to cheat hashes in processCheatCode
+field A i [I uiColors  # UI colour palette (HG.loadPalette)
+field A j [Ljavax/microedition/lcdui/Font; fonts  # Font[3]
+field A k [I fontMetrics  # per font: byte0 x-offset, byte1 y-offset, byte2 line height
+field A l J splashStartTime  # wall-clock ms of last splash image switch
+field A m J loadDoneHoldUntil  # ms timestamp (loading finished + 1000) before entering menu
+field A n Ljavax/microedition/lcdui/Image; splashImage  # current splash/intro image
+field A o I splashIndex  # index of next splash image /s0N.png
+field A p I tickCounter  # frame/tick counter, wraps at 100000; drives periodic logic and animations
+field A q Z splashFallbackShown  # state 2: fallback to image 159 already shown
+field A r Z scriptInputLock  # set by script op 76; blocks player control in updateInput
+field A s LC; loaderTask  # C loader runnable (map load thread); its .h is the lock
+field A t Ljavax/microedition/lcdui/Graphics; screenGraphics  # getGraphics() of the canvas
+field A u I gameState  # 1 init/splash+load,2 intro slideshow,3 map loading,4 quit,5 main menu,6 in game
+field A v [[B ACTION_KEY_MAP  # rows {actionId, repeatFlag(15=held-ok), keyIdx...}
+field A w I actionCount  # ACTION_KEY_MAP.length
+field A x [B actionState  # per ACTION_KEY_MAP row: 5 just pressed, 10 held, 0 none
+field A y [B keyState  # per key idx (0..19): 20 new press, 30 held, 10 released
+field A z [B keyReleaseTimer  # per key idx: 10 once keyReleased seen
+field A aa [S textAreaRects  # 15 text areas x 11 shorts: x,y,w,h,flags,enabled,clipX,clipY,clipW,clipH,lineGap
+field A ba [S textAreaScroll  # 15 x 3 shorts: scrollSpeedX,scrollSpeedY,offset (marquee state)
+field A ca [S textAreaScrollDir  # per text area scroll-bounce state
+field A da [Ljava/lang/String; singleLineBuf  # 1-element String[] reused for single line draw
+field A ea [I player  # player entity record int[55] (see docs/analysis/A.md)
+field A fa [[[I inventory  # int[6][15][] player inventory: 0 weapons,1 armor,2 consumables,3 jewelry,4 spells/runes,5 quest items
+field A ga [[I npcs  # NPC/monster instance records (B.a kind 6)
+field A ha [[I npcTemplates  # NPC type table
+field A ia [[I weapons  # weapon instance records
+field A ja [[I weaponTemplates  # weapon type table
+field A ka [[I armors  # armor instance records
+field A la [[I armorTemplates  # armor type table
+field A ma [[I consumables  # consumable/stackable instance records
+field A na [[I consumableTemplates  # consumable type table
+field A oa [[I questItems  # quest item instance records
+field A pa [I globalFlags  # int[23] global story-flag bitfields (script ops 36-38)
+field A qa [[I questItemTemplates  # quest item type table
+field A ra [[I worldObjects  # world object instances (chests, doors, levers, signs...) B.a kind 7, flag 4096
+field A sa [[I objectTemplates  # world object type table
+field A ta [[I itemAffixes  # item prefix/suffix modifier table (B loads; [1]=0 prefix,1 suffix)
+field A ua [[I jewelry  # ring/amulet instance records
+field A va [[I jewelryTemplates  # ring/amulet type table ([10]: 0 ring,1 amulet)
+field A wa [[I spellItems  # spell scroll/rune instance records
+field A xa [[I spellTemplates  # spell type table
+field A ya [I navGrid  # half-tile nav/collision grid, 3 ints per cell, size (B.b*2)*(B.c*2)
+field A za [[I npcPaths  # per NPC A* path (packed tile coords)
+field A aA [[I questLog  # int[19][4] quest log entries
+field A bA [I objectStateMasks  # per-area bitmask of object states (B.E/B.B)
+field A cA [I collectedConsumableMasks  # per-area bitmask of picked-up consumables
+field A dA [I collectedQuestItemMasks  # per-area bitmask of picked-up quest items
+field A eA [I deadNpcMasks  # per-area bitmask of dead/removed NPCs
+field A fA [I collectedWeaponMasks  # per-area bitmask of picked-up weapons
+field A gA [I collectedArmorMasks  # per-area bitmask of picked-up armor
+field A hA [I collectedJewelryMasks  # per-area bitmask of picked-up jewelry
+field A iA [I collectedSpellItemMasks  # per-area bitmask of picked-up spell items
+field A jA [I lootContainers  # loot lists: packed (firstItem low16, count high16), index B.s
+field A kA [[I projectiles  # arrow/bolt projectile records (WA update)
+field A lA [[I effects  # int[64][13] visual effect records (particles etc.)
+field A mA [[S effectParticles  # short[64][60] per-effect particle data
+field A nA I prefixCount  # count of itemAffixes with [1]==0 (set in B)
+field A oA I suffixCount  # count of itemAffixes with [1]==1 (set in B)
+field A pA I hostileNpcCount  # live hostile NPCs in area; at 0 victory music plays
+field A qA I ambientMusicId  # sound id for area ambient music (B sets 3 default)
+field A rA Z godMode  # cheat: player takes no damage
+field A sA [I sqrtTable  # isqrt lookup table loaded from /a
+field A tA Ljava/lang/String; loadingText  # HG.I(396)
+field A uA Ljava/lang/String; pauseText  # pause screen text
+field A vA Ljavax/microedition/lcdui/Image; bgBuffer  # wrapping pre-rendered tile background image
+field A wA Ljavax/microedition/lcdui/Graphics; bgGraphics  # Graphics of bgBuffer
+field A xA I bgTileX  # tile column of buffer origin (floor(cameraX/tileW))
+field A yA I bgTileY  # tile row of buffer origin
+field A zA I bgTilesW  # buffer width in tiles (screenW/tileW+2)
+field A ab I bgTilesH  # buffer height in tiles
+field A bb Z bgDirty  # force full redraw of bgBuffer
+field A cb [I scratchPos3  # scratch: entity x,y,z screen-space from B.B
+field A db [I shadowPos  # scratch position for drawBlobShadow
+field A eb [I worldMapPlayerPos  # scratch position for world map player draw
+field A fb Z quickslotMenuOpen  # quickslot selector open (key #)
+field A gb Z quickslotAssignMode  # assigning an inventory item to quickslot (set by HG)
+field A hb Z quickslotHotkeyUsed  # selection made via digit hotkey
+field A ib I quickslotGapX  # horizontal gap between slots
+field A jb I quickslotGapY  # vertical gap between slots
+field A kb [S quickslotPos  # 8 slots x,y shorts
+field A lb S quickslotLabelX
+field A mb S quickslotLabelY
+field A nb S quickslotLabelW
+field A ob S quickslotLabelH
+field A pb Ljava/lang/String; quickslotLabel  # name of selected quickslot item
+field A qb Ljava/lang/String; targetName  # name shown in target bar
+field A rb I targetBarX
+field A sb I targetBarW
+field A tb I targetBarFill  # pixel width of target HP fill
+field A ub I targetBarH
+field A vb I interactEntity  # B.a index of entity under interaction cursor (-1 none)
+field A wb I interactKind  # 0 pick up,1 talk,3-6 operate object,7 enter/loot
+field A xb I interactIcon  # frame of icon 137 for the prompt
+field A yb I interactPriority  # facing-based priority of candidate
+field A zb Ljava/lang/String; interactLabel  # hover label text
+field A aB I menuFrameImage  # image id of HUD/menu frame (126 default, 113)
+field A bB [I affixScratch  # int[7] scratch for item affix list
+field A cB Z inputLeft  # move left requested this tick (cleared after updatePlayer)
+field A dB Z inputRight
+field A eB Z inputUp
+field A fB Z inputDown
+field A gB Z inputAction  # attack/act key held (action 35)
+field A hB Z inputCycleTarget  # cycle target key (action 100)
+field A iB I targetNpc  # index into npcs of locked target, -1 none
+field A jB Z targetInRange  # target within weapon range
+field A kB I pendingAttackTarget
+field A lB Z pendingAttackInRange
+field A mB Z autoTargetSuppressed
+field A nB I attackCooldown  # ticks until next attack allowed
+field A oB I footstepCounter  # ticks between footstep animation/sound toggles
+field A uB [I noEncounterTiles  # tile ids near which no random encounter occurs
+field A vB I cameraX  # camera left pixel (smoothed per tick)
+field A wB I cameraY  # camera top pixel
+field A xB I cameraTargetX
+field A yB I cameraTargetY
+field A zB [I tmpVecA  # scratch int[2]
+field A ac [I tmpVecB  # scratch int[2]
+field A bc [I tmpVecC  # scratch int[2]
+field A dc Z collisionChanged  # world collision/door state changed; NPCs must re-path
+field A ec [S imageTable  # short[273*11]: w,h,frames,fileId,paletteSet,cols,rows,hotX,hotY,flags(1 failed,2 resident,4 packed),fallbackImg
+field A fc [[S imageFrames  # per image: 7 shorts per frame (img,sx,sy,w,h,offX,offY)
+field A gc [[Ljavax/microedition/lcdui/Image; images  # Image[imageId][paletteVariant]
+field A hc [I imageLoadQueue  # per image load request mask
+field A ic I packCurrentImage
+field A jc I packEntryLength
+field A kc [B packBuffer
+field A lc Ljava/io/DataInputStream; packStream  # stream on /i image pack
+field A mc [B rawImageBytes
+field A nc [B rawOffsetBytes
+field A oc [S modelTable  # 8 anim-model sets: fileId, flags
+field A pc [B animBoundsAnim  # anim -> anim used for bounds
+field A qc [[B lookVariantByWeaponType  # [spriteSet][weaponType] -> look variant
+field A rc [[[[B animFrameTables  # rc[set][variant][anim] = frames*5 bytes (duration,4 part tiles)
+field A sc [[[[B animPartTables  # sc[set][variant][look][anim*4+part] = sheet idx
+field A tc [[[B spriteRects  # tc[set][sheet] = 7 bytes per tile
+field A uc [[[[[S animBounds  # uc: bounds per anim frame
+field A vc [[S sheetInfo  # vc[set]: 6 shorts per sheet
+field A wc [[[B partChoiceLists
+field A xc [[[[I recolorTables  # xc: palette swap tables
+field A yc [[B variantChoiceCounts
+field A zc [[[Ljavax/microedition/lcdui/Image; sheetImages  # zc: Image[set][sheet][recolor]
+field A aC [[[B sheetPngBytes
+field A bC [S animBoundsOut  # scratch short[4] result of getAnimBounds
+field A cC [[[I recolorPalettes  # cC: PNG palette recolor sets
+field A dC [I crcTable
+field A eC [[B scripts  # eC: script bytecode per script
+field A fC [[I triggers  # fC: script trigger table (type,enabled,args...,scriptIdx)
+field A gC [[I scriptThreads  # gC[4][20]: running script contexts (status,trigger,script,pc,op,args,stack)
+field A hC I scriptVar0
+field A iC I scriptVar1
+field A jC I scriptVar2
+field A kC I scriptVar3
+field A lC I scriptVar4
+field A mC [I modifierScratch
+field A nC [I projectileStyles  # nC: 7 ints per projectile style
+field A oC [I tmpVecD
+field A pC [I tmpVecE
+field A qC Z messageBoxOpen  # modal message box active
+field A rC Z messageBoxQuantity  # message box has quantity chooser
+field A sC [Ljava/lang/String; messageLines
+field A tC Ljava/lang/String; messageTitle
+field A uC Ljava/lang/String; typedNumber  # digits typed into quantity chooser
+field A vC I encounterTerrain
+field A wC I encounterBackdrop
+field A xC I encounterFacing
+field A yC I msgLeftAction  # HG menu action for left soft key (106 = none)
+field A zC I msgRightAction
+field A ad I msgBoxHeight
+field A bd I msgBoxTop
+field A cd I qtyMin
+field A dd I qtyMax
+field A ed I qty  # current chosen quantity
+field A fd I qtyLineIdx
+field A gd I unitPrice
+field A hd I priceLineIdx
+field A id [I waitingScript  # script thread waiting for message box/dialogue
+field A jd I waitingScriptSlot
+field A kd Z dialogueOpen
+field A ld Ljava/util/Vector; dialogueHistory  # Vector of String[]
+field A md [Ljava/lang/String; dialogueLines
+field A nd I dialogueSelected
+field A od I dialogueScrollY
+field A pd I dialogueContentH
+field A qd I dialogueFrameImage
+field A rd I dialogueSpeakerTextId
+field A sd [I dialogueScript  # script thread to resume on close
+field A td Z dialogueHistoryMode
+field A ud Z dialogueSkippable
+field A vd J dialogueSkipAllowedAt  # wall-clock ms: 500ms lockout before dialogue can be dismissed
+field A wd I dialogueRectX
+field A xd I dialogueRectY
+field A yd I dialogueRectW
+field A zd I dialogueRectH
+field A aD I trainerCostItem
+field A bD I trainerCostPerPoint
+field A cD I trainerStat
+field A dD I trainerResult
+field A eD I trainerLoopPc
+field A fD I trainerOptionCount
+field A gD I trainerLpPerPoint
+field A hD Z trainerLearned
+field A jD Ljava/util/Hashtable; scriptTextCache  # Hashtable id -> raw bytes
+field A kD B textEncoding  # 0 ascii,1 utf16le,2 utf
+field A lD I lockPinCount
+field A mD I lockCurrentPin
+field A nD I lockPicksLeft
+field A oD I lockPicksInitial
+field A pD I lockPinMask  # pin directions | chest entity<<16
+field A qD Z lockpickingActive
+field A rD Ljava/lang/String; lockpickText
+field A sD [[I spellCasts  # int[10][11] active spell casts
+field A tD [[I spellTargets  # per cast target entity
+field A uD Z spellCasting
+field A yD I effectNext  # ring index for next effect
+field A zD Ljava/lang/String; worldMapTitle  # HG.I(315)
+field A ae I worldMapTitleHeight  # also top camera margin on normal maps
+field A be I pendingEnterArea  # set by script op 75 when player stands on a location marker; action key loads it (-1 none)
+field A ce I pendingEnterFrameImage  # HUD frame image id for prompt
+field A de I pendingEnterX
+field A ee I pendingEnterY
+field A ue J slot3Timestamp
+field A ve J slot2Timestamp
+method A A (I)V setState
+method A A ()V onEnterState
+method A B ()V onExitState
+method A C ()V updateState  # per-tick state logic; state 6 runs the game update under loaderTask.h
+method A D ()V releaseAllKeys
+method A E ()V updateActionStates  # per-tick key->action state update
+method A B (I)I findActionIndex
+method A C (I)Z isActionPressed
+method A F ()V clearActionStates
+method A A (Ljava/lang/String;IIIILjavax/microedition/lcdui/Graphics;)V drawStyledText
+method A A (IZ)V setTextAreaVisible
+method A A (IIIII)V setTextAreaClip
+method A A (IIIIII)V defineTextArea
+method A A (III)V resetTextAreaScroll
+method A A (II)V setTextAreaLineGap
+method A A (Ljava/lang/String;IILjavax/microedition/lcdui/Graphics;)V drawTextInArea
+method A A ([Ljava/lang/String;IILjavax/microedition/lcdui/Graphics;)V drawLinesInArea
+method A G ()Z loadDataFile  # reads /a: image table, menu defs (HG.eA), sqrt table; returns true on error
+method A H ()V initGameArrays
+method A I ()Z processCheatCode
+method A B (III)Z inRange
+method A A ([[I)I findFreeInstance
+method A D (I)I findFreeEntitySlot
+method A B (II)[I getEntity
+method A A ([I)[I getTemplate
+method A B ([[I)V clearEntityArray
+method A A ([IZ)V setEntityBlocking
+method A A (IIIIZ)V rebuildNavRegion  # resets nav cells in rect and re-marks non-walkable tiles / objects
+method A C (II)Z isTileWalkable
+method A A (IIIIZZ)Z isCellFree
+method A B ([I)I vectorLength
+method A C ([I)I vectorLength3D
+method A A ([I[I)J distanceSquared
+method A B ([I[I)V normalizeVector
+method A A ([II[I)V scaleVector
+method A E (I)I abs
+method A F (I)I isqrt
+method A A (Ljavax/microedition/lcdui/Graphics;)V drawPauseScreen
+method A B (Ljavax/microedition/lcdui/Graphics;)V drawSplashImage
+method A C (Ljavax/microedition/lcdui/Graphics;)V renderState
+method A J ()V createBackgroundBuffer
+method A K ()V releaseBackgroundBuffer
+method A L ()V buildTileOverlapLinks  # precompute per-tile offsets to tall tiles for y-sorted layer-1 drawing
+method A A ([IZLjavax/microedition/lcdui/Graphics;)V drawEntity
+method A A ([ILjavax/microedition/lcdui/Graphics;)V drawBlobShadow
+method A A (IIILjavax/microedition/lcdui/Graphics;)V drawTileLayerTile
+method A C (III)Z insertSortedChecked
+method A D (II)Z insertSorted
+method A D (Ljavax/microedition/lcdui/Graphics;)V renderWorld
+method A E (Ljavax/microedition/lcdui/Graphics;)V renderWorldMap
+method A A (IIII)V redrawBackgroundRegion
+method A M ()V updateBackgroundBuffer
+method A F (Ljavax/microedition/lcdui/Graphics;)V drawBackgroundBuffer
+method A N ()V initQuickslots
+method A O ()V releaseQuickslots
+method A P ()V layoutQuickslots
+method A Q ()V updateQuickslotLabel
+method A R ()I getQuickslotCategory
+method A S ()I getQuickslotIndex
+method A G (I)I quickslotNavigate
+method A T ()V updateQuickslotAssign
+method A U ()V updateQuickslotMenu
+method A G (Ljavax/microedition/lcdui/Graphics;)V drawQuickslots
+method A H (Ljavax/microedition/lcdui/Graphics;)V drawQuickslotLabel
+method A V ()V initTargetBar
+method A W ()V releaseTargetBar
+method A X ()V layoutTargetBar
+method A H (I)V setTargetBar
+method A I (Ljavax/microedition/lcdui/Graphics;)V drawTargetBar
+method A J (Ljavax/microedition/lcdui/Graphics;)V drawTargetReticle
+method A Y ()V initInteractLabel
+method A E (II)[I findInteractableAt
+method A F (II)V updateInteractionTarget
+method A K (Ljavax/microedition/lcdui/Graphics;)V drawInteractionIcon
+method A L (Ljavax/microedition/lcdui/Graphics;)V drawInteractLabel
+method A I (I)Z pickUpEntity
+method A A (I[I)Z hasInventorySpace
+method A A (IIZ)Z meetsRequirements
+method A D ([I)Z meetsRequirementsEntity
+method A G (II)V useInventoryItem
+method A A (Z)V putItemInContainer
+method A B (Z)Z takeItemFromContainer
+method A H (II)I countItems
+method A I (II)V removeItemsPacked
+method A A (IIIZZ)I removeInventoryItem
+method A E ([I)V useConsumable
+method A B (IIZ)V applyItemBonuses
+method A B ([IZ)V applyItemBonusesEntity
+method A B (IZ)I getStat
+method A A (IIZZ[I)V modifyStat
+method A A (Ljavax/microedition/lcdui/Graphics;ZZZI)V drawMenuBackground
+method A C (Z)I getBarHeight
+method A Z ()V recountAmmo
+method A AA ()V initPlayer
+method A J (I)I xpForLevel
+method A K (I)Z addGold
+method A BA ()[I getEquippedWeapon
+method A J (II)V placePlayer
+method A CA ()V updateWeaponLook
+method A DA ()Z canAttack
+method A EA ()I findNearestTarget
+method A FA ()V cycleTarget
+method A L (I)Z isNpcTargetable
+method A M (I)Z isNpcInRange
+method A B (I[I)Z addToInventory
+method A GA ()Z tryWorldMapEncounter
+method A HA ()V updatePlayer
+method A IA ()V snapCameraToPlayer
+method A JA ()V updateCamera
+method A KA ()V updateNpcs
+method A LA ()V initNpcs
+method A N (I)Z isFriendlyNpc
+method A C (I[I)V setNpcWeaponLook
+method A D (I[I)Z canNpcAttack
+method A F ([I)I getEntityTile
+method A C (IZ)V npcAcquireTarget
+method A O (I)V npcFollowPath
+method A C (IIZ)I npcChooseAttack
+method A P (I)Z npcCheckDeath
+method A Q (I)Z npcUpdateAttack
+method A R (I)Z npcFindApproachTile
+method A S (I)Z npcFindPath
+method A T (I)V npcClearPath
+method A D (III)V setNavCellState
+method A A (IIIIIIII)V setNavNode
+method A U (I)V dropNpcLoot
+method A D (IZ)V alertNearbyAllies
+method A MA ()V initImageTable
+method A NA ()V freeNonResidentImages
+method A K (II)V requestImage
+method A A (ZII)V loadRequestedImages
+method A A (IIIILjavax/microedition/lcdui/Graphics;)V drawSpriteWorldSimple
+method A A (IIIIIILjavax/microedition/lcdui/Graphics;)V drawSpriteWorld
+method A B (IIIILjavax/microedition/lcdui/Graphics;)V drawSpriteScreenSimple
+method A B (IIIIIILjavax/microedition/lcdui/Graphics;)V drawSpriteScreen
+method A A (IIIIIIILjavax/microedition/lcdui/Graphics;)V drawSpriteByDirection
+method A A (IIIIIIIILjavax/microedition/lcdui/Graphics;)V drawSpriteImpl
+method A W (I)Z ensureImage
+method A L (II)Z ensureImageVariant
+method A X (I)Z loadRawImage
+method A OA ()V openImagePack
+method A PA ()V closeImagePack
+method A QA ()V rewindImagePack
+method A M (II)Z readImageFromPack
+method A RA ()V allocModelTables
+method A SA ()V freeModelTables
+method A N (II)I directionFromVector
+method A A ([II)V setAnim
+method A B ([II)V setAnimTime
+method A C ([II)V setAnimFrame
+method A D ([II)V setModelSet
+method A G ([I)I getAnim
+method A H ([I)I getAnimTime
+method A I ([I)I getAnimFrame
+method A J ([I)I getModelSet
+method A K ([I)I getVariantCount
+method A L ([I)I getVariant
+method A E ([II)V setVariant
+method A M ([I)I getLookCount
+method A N ([I)I getLook
+method A F ([II)V setLook
+method A A ([III)V setSlotByte
+method A G ([II)I getSlotByte
+method A O ([I)I getRecolorSlotCount
+method A H ([II)I getRecolorChoiceCount
+method A I ([II)I getRecolorChoice
+method A B ([III)V setRecolorChoice
+method A P ([I)I getVariantSlotCount
+method A J ([II)I getVariantChoiceCount
+method A K ([II)I getVariantChoice
+method A C ([III)V setVariantChoice
+method A Q ([I)I getPartSlotCount
+method A L ([II)I getPartChoiceCount
+method A M ([II)I getPartChoice
+method A D ([III)V setPartChoice
+method A N ([II)V playAnim
+method A C ([IZ)Z advanceAnim  # advances animation by one tick; returns true when finished
+method A B ([ILjavax/microedition/lcdui/Graphics;)V drawAnimatedEntity
+method A D ([IZ)[S getAnimBounds
+method A Y (I)V loadModel
+method A O (II)Z shareSheetWithLoadedModel
+method A P (II)[B readModelSheet
+method A E ([IZ)V startObjectAnim
+method A R ([I)V updateObjectAnim
+method A A ([B)Z isPngSignature
+method A A ([BI)I readInt32BE
+method A B ([BI)Z isPlteChunk
+method A A ([BII)I crc32
+method A C ([BI)Z verifyChunkCrc
+method A D ([BI)V fixChunkCrc
+method A A ([BII[I[I)Z recolorPng
+method A A ([BIII[I[I)V recolorPlte
+method A E (III)V teleportNpc
+method A A (IIIIIZ)Z checkTriggers
+method A TA ()V runScripts  # per tick: steps each active script context
+method A O ([II)V executeScript
+method A S ([I)I getStrength  # ea[14] low / template[7]; assumed STR
+method A T ([I)I getDexterity  # ea[15] low / template[8]; assumed DEX
+method A E (I[I)I getWeaponSkill
+method A F (I[I)I getArmorValue
+method A A (I[I[I)Z applyDamage
+method A F (III)I calcDamageMax
+method A G (III)I calcDamageMin
+method A A (IIIIIIIZ)I computeDamage
+method A H (III)I calcAttackDelay
+method A B (IIII)I calcCritChance
+method A C (IIII)Z rollCrit
+method A Q (II)I calcHitChance
+method A R (II)Z rollHit
+method A A ([I[I[I)I performAttack
+method A V ([I)I getWeaponRange
+method A W ([I)I getWeaponDamage
+method A A ([I[II)I getModifierSum
+method A X ([I)I getWeaponCritBonus
+method A Y ([I)I getWeaponSpeed
+method A Z ([I)I getWeaponType
+method A C ([I[I)[I collectModifiers
+method A UA ()V initProjectiles
+method A VA ()V releaseProjectiles
+method A A ([I[IIIII)V spawnProjectile
+method A P ([II)V projectileImpact
+method A WA ()V updateProjectiles  # per tick
+method A C ([ILjavax/microedition/lcdui/Graphics;)V drawProjectile
+method A A (IIIIILjavax/microedition/lcdui/Graphics;)V drawProjectileStyle1
+method A B (IIIIILjavax/microedition/lcdui/Graphics;)V drawProjectileStyle0
+method A I (III)V setEncounterParams
+method A A (Ljava/lang/String;Ljava/lang/String;IIIII)V showQuantityPrompt
+method A A (Ljava/lang/String;Ljava/lang/String;II)V showMessageBox
+method A D (IIII)V showMessageBoxById
+method A M (Ljavax/microedition/lcdui/Graphics;)V drawMessageBoxFrame
+method A N (Ljavax/microedition/lcdui/Graphics;)V drawMessageBox
+method A XA ()V updateMessageBox
+method A Z (I)Ljava/lang/String; getScriptText
+method A ZA ()V preloadScriptTexts
+method A AB ()V clearScriptTexts
+method A BB ()V layoutDialogue
+method A AA (I)V addDialogueLineById
+method A A (Ljava/lang/String;)V addDialogueLine
+method A A (II[I)V startDialogue
+method A O (Ljavax/microedition/lcdui/Graphics;)V drawDialogueText
+method A P (Ljavax/microedition/lcdui/Graphics;)V drawDialogueHistory
+method A Q (Ljavax/microedition/lcdui/Graphics;)V drawDialogue
+method A A (Ljavax/microedition/lcdui/Graphics;ILjava/lang/String;)V drawDialogueSpeakerBar
+method A CB ()V endDialogue
+method A DB ()V updateDialogue
+method A BA (I)V startLockpicking
+method A R (Ljavax/microedition/lcdui/Graphics;)V drawLockpicking
+method A EB ()Z pickBreaks
+method A FB ()V consumeLockpicks
+method A GB ()V updateLockpicking
+method A CA (I)I randomBits
+method A S (Ljavax/microedition/lcdui/Graphics;)V drawHud
+method A A (Ljavax/microedition/lcdui/Graphics;I)V drawHudFrame
+method A T (Ljavax/microedition/lcdui/Graphics;)V drawHpBar
+method A B (Ljavax/microedition/lcdui/Graphics;I)V drawManaBar
+method A IB ()V initSpellCasts
+method A DA (I)V toggleSpellCast
+method A JB ()V updateSpellCasts
+method A E (IZ)Z advanceSpellTimer
+method A B (II[I)Z applySpellEffect
+method A KB ()I findFreeSpellCast
+method A EA (I)Z updateSpellProjectile
+method A D ([ILjavax/microedition/lcdui/Graphics;)V drawSpellProjectile
+method A OB ()V initEffects
+method A PB ()V releaseEffects
+method A QB ()V updateEffects  # per tick; lifetime lA[i][10] counts down in ticks
+method A E ([ILjavax/microedition/lcdui/Graphics;)V drawEffect
+method A RB ()V initWorldMapBanner
+method A SB ()V releaseWorldMapBanner
+method A V (Ljavax/microedition/lcdui/Graphics;)V drawWorldMapBanner  # world-map mode only: title banner + enter-location prompt
+method A G (I[I)V spawnSpellFx
+method A AA ([I)V spawnSpellEndFx
+method A H (I[I)V getSpellDirection
+method A B (I[I[I)V getSpellTargetPos
+method A J (III)V spawnFx0
+method A BA ([I)V updateFx0
+method A F ([ILjavax/microedition/lcdui/Graphics;)V drawFx0
+method A K (III)V spawnFx14
+method A CA ([I)V updateFx14
+method A G ([ILjavax/microedition/lcdui/Graphics;)V drawFx14
+method A B (IIIIII)V spawnFx3Simple
+method A A (IIIIIII)V spawnFx3
+method A EA ([I)V updateFx3
+method A I ([ILjavax/microedition/lcdui/Graphics;)V drawFx3
+method A C (IIIIII)V spawnFx4
+method A FA ([I)V updateFx4
+method A J ([ILjavax/microedition/lcdui/Graphics;)V drawFx4
+method A Q ([II)V spawnFx1
+method A GA ([I)V updateFx1
+method A K ([ILjavax/microedition/lcdui/Graphics;)V drawFx1
+method A D (IIIIII)V spawnFx5Simple
+method A B (IIIIIII)V spawnFx5
+method A HA ([I)V updateFx5
+method A L ([ILjavax/microedition/lcdui/Graphics;)V drawFx5
+method A E (IIIIII)V spawnFx6
+method A IA ([I)V updateFx6
+method A M ([ILjavax/microedition/lcdui/Graphics;)V drawFx6
+method A F (IIIIII)V spawnFx7
+method A JA ([I)V updateFx7
+method A N ([ILjavax/microedition/lcdui/Graphics;)V drawFx7
+method A E (IIII)V spawnFx8
+method A KA ([I)V updateFx8
+method A O ([ILjavax/microedition/lcdui/Graphics;)V drawFx8
+method A L (III)V spawnFx9
+method A LA ([I)V updateFx9
+method A P ([ILjavax/microedition/lcdui/Graphics;)V drawFx9
+method A S (II)V spawnFx10
+method A MA ([I)V updateFx10
+method A Q ([ILjavax/microedition/lcdui/Graphics;)V drawFx10
+method A M (III)V spawnFx11
+method A NA ([I)V updateFx11
+method A R ([ILjavax/microedition/lcdui/Graphics;)V drawFx11
+method A T (II)V spawnFx12
+method A OA ([I)V updateFx12
+method A S ([ILjavax/microedition/lcdui/Graphics;)V drawFx12
+method A N (III)V spawnFx13
+method A PA ([I)V updateFx13
+method A T ([ILjavax/microedition/lcdui/Graphics;)V drawFx13
+method A TB ()V loadSaveTimestamps
+method A FA (I)Z saveGame
+method A GA (I)Z loadGame
+method A HA (I)Z saveSlotExists
+method A W (Ljavax/microedition/lcdui/Graphics;)V render
+method A UB ()V updateInput  # per-tick input dispatch by state
+method A VB ()V resumeGame
+method A WB ()V pauseGame
+method A IA (I)V initGame

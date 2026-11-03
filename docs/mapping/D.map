@@ -1,0 +1,8 @@
+# D = sound command thread: drains a queue of sound ids, polling every 100 ms (HG = sound manager)
+class D SoundThread
+field D a Ljava/util/Vector; pendingSounds
+field D b Z started                 # set once run() entered; HG starts a new D when false
+field D c Z idle                    # false during a drain pass, true while sleeping
+field D d I loopCount
+method D A (I)V enqueue             # queue sound id for HG.Q/HG.R playback
+method D B (I)V stopSound           # HG.L(id)

@@ -1,0 +1,53 @@
+Gothic 3: The Beginning - PC port
+=================================
+
+Unofficial fan project. Not affiliated with or endorsed by THQ Nordic, Piranha Bytes or HandyGames.
+Gothic is a trademark of its respective owners. This repository and the released applications contain no code or assets of the
+original game: the player supplies their own copy of Gothic3-TheBeginning_s40v3a.jar (see docs/byo-jar.md).
+
+The licence of this project's own code (midp/, port/, desktop/, buildtools/, game-patches/ as far as they are our own work, docs/,
+scripts/, game/src/port, game/src/main/resources/{render3d,post}) has not been chosen yet.
+
+Third-party components
+----------------------
+
+Bundled in the application (fat jar / app images):
+
+* libGDX 1.14.2 (gdx, gdx-backend-lwjgl3, gdx-platform natives, gdx-jnigen-loader) - Apache License 2.0 - https://libgdx.com
+* libGDX gdx-controllers 2.2.4 (core, desktop) - Apache License 2.0 - https://github.com/libgdx/gdx-controllers
+* jamepad 2.26.5.0 (gamepad natives, includes SDL2, zlib licence) - see https://github.com/electronstudio/jamepad
+* LWJGL 3.3.3 (lwjgl, glfw, opengl, openal, stb, jemalloc, tinyfd) - BSD 3-Clause - https://www.lwjgl.org
+  (lwjgl-tinyfd bundles tinyfiledialogs, zlib licence)
+* jlayer 1.0.1-gdx (com.badlogicgames.jlayer, libGDX fork of JLayer) - LGPL 2.0 or later - https://github.com/libgdx/gdx-jlayer
+* JOrbis 0.0.17 - LGPL 2.1 or later - http://www.jcraft.com/jorbis/
+  (jlayer and JOrbis are libGDX audio dependencies, shipped unmodified as ordinary jar files inside the fat jar)
+* Liberation Sans Regular / Bold (midp/src/main/resources/gothic3/platform/fonts/) - SIL Open Font License 1.1, copyright Red Hat, Inc.;
+  licence text in midp/src/main/resources/gothic3/platform/fonts/LICENSE - https://github.com/liberationfonts/liberation-fonts
+* Gervill software synthesizer (MIDI) and the Java runtime - part of the JDK (GPL v2 with Classpath Exception), not bundled by us except in jpackage app images.
+
+Fetched at build time and packed into the run-time bundle (byo.zip), used to build the game from the player's own jar; both are shipped
+unmodified as separate jar files (SHA-256 pinned in game-patches/build.properties):
+
+* Vineflower 1.12.0 (decompiler) - Apache License 2.0 - https://github.com/Vineflower/vineflower
+* tiny-remapper 0.14.1 (fat jar, FabricMC) - LGPL 3.0 - https://github.com/FabricMC/tiny-remapper
+  LGPL notice: tiny-remapper is not modified and is only called as a separate library jar; the user can replace it with another build.
+  Its complete source code is available at https://github.com/FabricMC/tiny-remapper (tag 0.14.1). The licence text is in the jar.
+
+Bundled in the app images (jpackage), as a separate executable `ffmpeg/ffmpeg[.exe]` next to the app jar (used only to convert the game's AMR
+sound effects to WAV; the app runs it as a child process and you may replace it with any other ffmpeg, or put one on PATH):
+
+* FFmpeg 9.0.2 (unmodified; minimal build, AMR-NB demuxer / WAV muxer / PCM encoder / resampler only) - LGPL 3.0 or later (configured with
+  --enable-version3, no GPL and no nonfree components) - https://ffmpeg.org
+  Source: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz (SHA-256 8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e).
+  Configure flags: --disable-everything --disable-autodetect --disable-network --disable-doc --disable-debug --disable-ffplay --disable-ffprobe
+  --disable-avdevice --disable-swscale --enable-small --enable-static --disable-shared --disable-x86asm --enable-version3
+  --enable-libopencore-amrnb --enable-protocol=file --enable-demuxer=amr --enable-parser=amr --enable-decoder=libopencore_amrnb
+  --enable-muxer=wav --enable-encoder=pcm_s16le --enable-filter=aresample,aformat,anull,abuffer,abuffersink
+  (plus include / library paths of the static opencore-amr; Windows adds --target-os=mingw32 and links statically).
+  Exact reproduction: scripts/ffmpeg/build-minimal-ffmpeg.sh in this repository. The licence texts (COPYING.LGPLv3, COPYING.LGPLv2.1) and a
+  FFMPEG-NOTICE.txt are shipped in `ffmpeg/LICENSES/`.
+* opencore-amr 0.1.6 (OpenCORE AMR-NB decoder, statically linked into that ffmpeg executable) - Apache License 2.0 -
+  https://sourceforge.net/projects/opencore-amr/ (source: opencore-amr-0.1.6.tar.gz, SHA-256 483eb4061088e2b34b358e47540b5d495a96cd468e361050fae615b1809dc4a1;
+  licence and NOTICE in `ffmpeg/LICENSES/`). FFmpeg's native AMR-NB decoder is not used because it cannot decode this game's audio.
+
+Build and test tooling (not shipped): Gradle (Apache 2.0), JDK.
