@@ -4,6 +4,16 @@ A PC port of the 2008 J2ME game *Gothic 3: The Beginning*, built from renamed an
 
 **Trailer:** https://youtu.be/5WvNaz-iCe4 (the original 2D view next to the optional 3D view; footage shows the original game's art, so it is hosted outside this repository).
 
+![Original 2D view next to the 3D view](https://github.com/spartalos/gothic3-beginning-pc/releases/download/v0.2.0/still7_2D_vs_3D.png)
+
+| | |
+|---|---|
+| ![Village by day](https://github.com/spartalos/gothic3-beginning-pc/releases/download/v0.2.0/still1_village.png) | ![Village at dusk](https://github.com/spartalos/gothic3-beginning-pc/releases/download/v0.2.0/still2_dusk_village.png) |
+| ![Snowy forge](https://github.com/spartalos/gothic3-beginning-pc/releases/download/v0.2.0/still4_snow_forge.png) | ![Ice coast](https://github.com/spartalos/gothic3-beginning-pc/releases/download/v0.2.0/still5_ice_coast.png) |
+| ![Castle crypt](https://github.com/spartalos/gothic3-beginning-pc/releases/download/v0.2.0/still3_crypt.png) | ![Crypt hall](https://github.com/spartalos/gothic3-beginning-pc/releases/download/v0.2.0/still6_crypt_hall.png) |
+
+The screenshots show the original game's art and are hosted as files of the [v0.2.0 release](https://github.com/spartalos/gothic3-beginning-pc/releases/tag/v0.2.0), not in this repository.
+
 ## Playing: you need your own copy of the game
 
 This port does not contain the game. It builds it on your computer from your own copy of the original mobile game:
