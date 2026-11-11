@@ -22,7 +22,8 @@ final class Patcher {
         int i = 0;
         while (i < s.length()) {
             int e = s.indexOf('\n', i);
-            out.add(s.substring(i, e));
+            // tolerate CRLF (a Windows checkout with core.autocrlf turns the bundled patches into CRLF)
+            out.add(s.substring(i, e > i && s.charAt(e - 1) == '\r' ? e - 1 : e));
             i = e + 1;
         }
         return out;

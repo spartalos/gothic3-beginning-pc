@@ -1,0 +1,5 @@
+# LF everywhere, also in Windows checkouts (CI release runners): the game patches are applied
+# line by line on the player's machine and the build hashes text files.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
