@@ -32,18 +32,26 @@ final class HdText {
     private final ArrayList<Texture> pages = new ArrayList<>();
     private int penX, penY, rowH;           // shelf packer in the newest page
     private Texture white;
-    /**
-     * Kerning (window pixels, <= 0) between two glyphs: the game's integer advances have none, so diagonal pairs (v, w, y, T ...)
-     * look gapped at HD size. Liberation Sans' pair data is not reachable through java.awt (GPOS only), hence a small table in em.
-     */
-    private static float kern(char a, char b, float px) {
-        boolean lowerRound = "aeoc dgqu.,".indexOf(b) >= 0 && b != ' ';
-        float em;
-        if ("vwyVWY".indexOf(a) >= 0 && (lowerRound || b == 'r')) em = "VWY".indexOf(a) >= 0 ? 0.07f : a == 'w' ? 0.06f : 0.04f;
-        else if ("aeo".indexOf(a) >= 0 && "vwy".indexOf(b) >= 0) em = 0.03f;
-        else if ((a == 'T' || a == 'F' || a == 'P') && (lowerRound || b == 'r')) em = 0.06f;
-        else em = 0;
-        return -em * px;
+    private static final java.awt.font.FontRenderContext FRC = new java.awt.font.FontRenderContext(null, true, true);
+    private final Map<String, float[]> layouts = new HashMap<>();
+
+    /** Natural (fractional) pen positions of the HD font at each char boundary of s (length n+1), in window pixels. */
+    private float[] natural(Font f, String s, float px) {
+        int px4 = Math.round(px * 4);
+        String key = (f.getFace() << 16 | f.getStyle() << 8 | f.getSize()) + ":" + px4 + ":" + s;
+        float[] r = layouts.get(key);
+        if (r == null) {
+            r = new float[s.length() + 1];
+            try {
+                java.awt.font.GlyphVector gv = f.awtFont(px4 / 4f).createGlyphVector(FRC, s);
+                for (int i = 0; i <= s.length(); i++) r[i] = (float) gv.getGlyphPosition(i).getX();
+            } catch (RuntimeException e) {
+                for (int i = 0; i <= s.length(); i++) r[i] = 0;
+            }
+            if (layouts.size() > 4096) layouts.clear();
+            layouts.put(key, r);
+        }
+        return r;
     }
 
     private static long key(Font f, char c, int px4) {
@@ -160,22 +168,21 @@ final class HdText {
             batch.setColor((o.rgb >> 16 & 255) / 255f, (o.rgb >> 8 & 255) / 255f, (o.rgb & 255) / 255f, 1f);
             float baseGL = Math.round(oy + dh - o.y * k - ascPx);
             float bottom = baseGL - (cellH - pad - ascPx);
-            int pen = o.x;
-            float kernAcc = 0;
             String s = o.text;
+            float[] nat = natural(f, s, px);
+            float target = tw * k;   // the game's width of the string, in window pixels
+            float factor = nat[s.length()] > 0 ? Math.max(0.9f, Math.min(1.1f, target / nat[s.length()])) : 1f;
             for (int i = 0; i < s.length(); i++) {
                 char c = s.charAt(i);
-                int adv = f.charWidth(c);
-                if (i > 0 && c > ' ' && s.charAt(i - 1) > ' ') kernAcc += kern(s.charAt(i - 1), c, px);
-                if (c > ' ' && pen + adv > o.cx0 - 8 && pen < o.cx1 + 8) {
+                int pen = o.x + (int) (nat[i] / k);   // canvas x, only for culling
+                if (c > ' ' && pen + 24 > o.cx0 && pen - 24 < o.cx1) {
                     Glyph gl = glyph(f, c, px, ascPx, cellH, pad);
-                    float gx = Math.round(ox + pen * k + kernAcc) - gl.pad;
+                    float gx = Math.round(ox + o.x * k + nat[i] * factor) - gl.pad;
                     batch.draw(gl.region, gx, bottom, gl.region.getRegionWidth(), gl.region.getRegionHeight());
                 }
-                pen += adv;
             }
             if (f.isUnderlined()) {
-                batch.draw(white(), ox + o.x * k, oy + dh - (o.y + f.getBaselinePosition() + 2) * k, (pen - o.x) * k, Math.max(1f, k));
+                batch.draw(white(), ox + o.x * k, oy + dh - (o.y + f.getBaselinePosition() + 2) * k, tw * k, Math.max(1f, k));
             }
         }
         batch.setColor(1, 1, 1, 1);
