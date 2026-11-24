@@ -162,6 +162,7 @@ public final class PortLoop {
       int[] canon = px.clone();
       java.util.Map<String, Long> before = gothic3.port.StateHasher.fieldHashes();
       if (renderIntermediate(1.0f, false)) {
+         b().pixelsInternal(); // HD text: rasterise the recorded text into the pixels before comparing / hashing
          TickTrace.parity(tickNo, canon, px);
          TickTrace.alpha1Hash(px);
       }
@@ -169,6 +170,7 @@ public final class PortLoop {
          java.util.Map<String, Long> after = gothic3.port.StateHasher.fieldHashes();
          TickTrace.intermediateStateDiff(tickNo, before, after);
       }
+      b().pixelsInternal(); // drop any pending HD text of the extra renders (it is overwritten below)
       System.arraycopy(canon, 0, px, 0, canon.length); // leave the canonical frame in the buffer (it may still be published)
    }
 

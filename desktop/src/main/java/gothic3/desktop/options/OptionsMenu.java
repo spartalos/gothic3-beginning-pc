@@ -95,6 +95,7 @@ public final class OptionsMenu {
                 .hint("Interpolated keeps the 10 Hz logic but draws at display rate.");
         set(d, "Max FPS", "render.maxFps").choice(a("0", "60", "120", "144", "165", "240", "1000"),
                 a("Display rate", "60", "120", "144", "165", "240", "Unlimited")).hint("Display rate = one frame per vsync.");
+        set(d, "HD text", "render.hdText").toggle().hint("Text is drawn at window resolution (crisp) instead of upscaled with the picture.");
         set(d, "Fast forward speed", "game.fastForwardSpeed").choice(a("2", "3", "4", "5", "6", "7", "8"), a("2x", "3x", "4x", "5x", "6x", "7x", "8x"))
                 .hint("Logic speed while fast forward is on (F8 / right stick click toggles).");
         set(d, "FPS overlay", "debug.overlay").toggle().live(() -> String.valueOf(app.overlayVisible())).hint("Same as F3.");
@@ -271,6 +272,7 @@ public final class OptionsMenu {
             case "window.scale": win.setScale(value); break;
             case "window.fullscreen": win.setFullscreen(on(value)); break;
             case "window.vsync": win.setVsync(on(value)); app.vsync(on(value)); win.applyPacing(Math.max(0, cfg.getInt("render.maxFps", 0))); break;
+            case "render.hdText": gothic3.platform.TextLayer.enabled = on(value); break;
             case "render.maxFps": win.applyPacing(Math.max(0, cfg.getInt("render.maxFps", 0))); break;
             case "debug.overlay": if (on(value) != app.overlayVisible()) app.toggleOverlay(); break;
             case "render.view": if (value.equalsIgnoreCase("3d") != RenderConfig.view3d()) app.toggleView3d(); break;

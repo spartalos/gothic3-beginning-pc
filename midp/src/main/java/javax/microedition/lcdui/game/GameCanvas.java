@@ -20,7 +20,13 @@ public abstract class GameCanvas extends Canvas {
         this.buffer = Image.createImage(Platform.getWidth(), Platform.getHeight());
     }
 
-    protected Graphics getGraphics() { return buffer.getGraphics(); }
+    private final gothic3.platform.TextLayer text = new gothic3.platform.TextLayer();   // PORT: HD text recorded on the screen buffer
+
+    protected Graphics getGraphics() {
+        Graphics g = buffer.getGraphics();
+        g.setTextLayer(text);
+        return g;
+    }
 
     public void flushGraphics() { publishCurrent(); }
 
@@ -28,12 +34,22 @@ public abstract class GameCanvas extends Canvas {
 
     /** Non-MIDP: publish the back buffer to the presentation layer. */
     public void publishCurrent() {
+        if (!gothic3.platform.TextLayer.enabled && text.size() > 0) flushText(); // HD text switched off: the old look from the next frame on
         Platform.frames().publish(buffer.getPixelsInternal(), buffer.getWidth(), buffer.getHeight(),
-                gothic3.platform.scene3d.DrawCapture.pending()); // PORT: 3D scene of this frame (or null)
+                gothic3.platform.scene3d.DrawCapture.pending(), // PORT: 3D scene of this frame (or null)
+                text.snapshot());                               // PORT: HD text of this frame
     }
 
-    /** Non-MIDP: the live back buffer (ARGB, width*height). For verification tools; do not retain. */
-    public int[] pixelsInternal() { return buffer.getPixelsInternal(); }
+    private void flushText() {
+        Graphics g = getGraphics();
+        g.flushAllText();
+    }
+
+    /** Non-MIDP: the live back buffer (ARGB, width*height) with all text rasterised into it. For verification tools; do not retain. */
+    public int[] pixelsInternal() {
+        if (text.size() > 0) flushText();
+        return buffer.getPixelsInternal();
+    }
 
     public synchronized int getKeyStates() {
         int r = pressedBits | latchedBits;

@@ -74,6 +74,7 @@ public final class DesktopLauncher {
             if (cm.length == 4) RenderConfig.setCaptureMargin(Integer.parseInt(cm[0]), Integer.parseInt(cm[1]), Integer.parseInt(cm[2]), Integer.parseInt(cm[3]));
         } catch (NumberFormatException ignored) { }
         RenderConfig.setMaxFps(maxFps);
+        gothic3.platform.TextLayer.enabled = cfg.getBool("render.hdText");   // HD text (docs/platform.md)
         Platform.pacer().setFollowDisplay(mode == RenderConfig.INTERPOLATED && maxFps == 0);
         if (opt.deterministic) {
             System.setProperty("g3.deterministic", "true");

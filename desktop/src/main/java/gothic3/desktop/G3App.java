@@ -36,6 +36,9 @@ public final class G3App extends ApplicationAdapter {
     private gothic3.desktop.post2d.PostChain2D post2d;   // POST: 2D view effects (docs/post.md)
     private Scene3D scene;                   // scene of the latest uploaded frame (null = plain 2D frame)
     private final Scene3D[] sceneOut = new Scene3D[1];
+    private final gothic3.platform.TextLayer.Op[][] textOut = new gothic3.platform.TextLayer.Op[1][];
+    private gothic3.platform.TextLayer.Op[] textOps = gothic3.platform.TextLayer.NONE;   // HD text of the uploaded frame (HdText)
+    private HdText hdText;
     private volatile java.io.File pendingShot;
     private volatile java.util.concurrent.CountDownLatch shotLatch;
     private java.io.File windowFramesDir;
@@ -224,10 +227,12 @@ public final class G3App extends ApplicationAdapter {
             rgba = new int[w * h];
         }
         sceneOut[0] = null;
-        long s = fb.copyIfNewer(serial, argb, sceneOut);
+        textOut[0] = null;
+        long s = fb.copyIfNewer(serial, argb, sceneOut, textOut);
         if (s == serial) return;
         serial = s;
         scene = sceneOut[0];
+        textOps = textOut[0] != null ? textOut[0] : gothic3.platform.TextLayer.NONE;
         statUploaded++;
         if (burstDir != null && burstLeft > 0 && RenderConfig.ticks() >= burstAfterTick) {
             if (burstFrames.isEmpty()) burstT0 = System.nanoTime();
@@ -441,6 +446,10 @@ public final class G3App extends ApplicationAdapter {
             batch.end();
         }
         drawn2dPost = false;
+        if (textOps.length > 0) {   // HD text: the frame's text at window resolution, over the upscaled picture
+            if (hdText == null) hdText = new HdText();
+            hdText.draw(batch, textOps, x, y, dw, dh, fw, fh, bw, bh);
+        }
         if (editor.isOpen()) {
             if (r3d != null && scene != null && gothic3.platform.RenderConfig.view3d() && !r3d.failed()) {
                 try {
@@ -480,6 +489,7 @@ public final class G3App extends ApplicationAdapter {
         if (setup != null) setup.dispose();
         if (r3d != null) r3d.dispose();
         if (post2d != null) post2d.dispose();
+        if (hdText != null) hdText.dispose();
         gothic3.desktop.render3d.post.Gfx.disposeShared();
         if (batch != null) batch.dispose();
         if (font != null) font.dispose();
