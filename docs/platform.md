@@ -142,6 +142,26 @@ there is no burst or jump; the classic loop sleeps `100 / speed` ms). The game's
 changes, still excluding options-screen pauses). Music and SFX are untouched (music keeps its pitch; at most one deferred SFX is played per tick, so nothing queues up). `--deterministic` / `--trace-ticks` runs ignore the speed completely
 (`RenderConfig.setSpeed` is a no-op there). Script command: `speed N` (1 = normal).
 
+## HD text
+
+The game's text was rasterised (1-bit, no anti-aliasing) at the logical resolution and upscaled with the picture, which looks chunky. With `render.hdText = true`
+(F10 > Display > HD text, default on) text drawn onto the **screen buffer** is not rasterised there. `Graphics.text` records it as a `gothic3.platform.TextLayer.Op`
+(string, `Font`, colour, absolute position, effective clip) and the ops travel with the published frame (`FrameBuffer.publish(..., textOps)`, `GameCanvas.publishCurrent`),
+so they always belong to the pixels they were drawn with: canonical ticks, interpolated in-between frames and the 3D view's HUD layer alike. The presenter
+(`desktop/HdText`, called from `G3App.render` after the upscaled picture / the 3D scene and before the editor and F10 screens) draws them at window resolution:
+glyphs are rasterised with anti-aliasing by java.awt (same Liberation Sans outlines, size = nominal size x window scale) into atlas pages and placed with the
+game's own integer advances and line metrics scaled by the same factor, so layout is identical to the low-resolution text. The game's clip rectangle is applied
+with a GL scissor (scrolling text boxes), colours are per op.
+
+* Only the screen buffer (`GameCanvas.getGraphics`) records ops; text drawn into offscreen mutable images keeps the old path (those images are reused as sprites).
+* The ops persist with the screen buffer like its pixels do. When a later draw overlaps an op's bounds (`Graphics.touch`: fillRect, lines, regions, drawRGB, copyArea, ...),
+  the op (and earlier ops overlapping it) is rasterised into the buffer first, so stacking is exact (e.g. a dim overlay over text); that text keeps the old look.
+  `clearTransparent` (3D world pass) drops all ops.
+* Verification / screenshots: `GameCanvas.pixelsInternal()` (trace hashes, `--verify`) rasterises all pending ops into the buffer first, and `FrameBuffer.copyIfNewer(serial, int[])`
+  (script `shot`, `--frames-dir`) burns the ops into its copy, so those tools see the classic low-resolution text and the trace / 661-of-661 verify results do not depend
+  on the option. `wshot` (the presented window) shows the HD text.
+* Switching the option off flushes pending ops into the buffer at the next publish; the 2D post effects (`post2d.*`) do not process the HD text (it is drawn over their result).
+
 ## Options screen (F10)
 `F10` (keyboard) or `Start + Back` (gamepad; both are also the default soft keys, so it is a chord) opens an in-game options panel on the left of the window; `Esc` / `B` / `F10`
 or "Back to game" closes it. Fixed keys: it is not rebindable, and F10 is rejected as a binding. A one-time hint ("F10: options") is shown on the first interactive start
@@ -166,6 +186,7 @@ or "Back to game" closes it. Fixed keys: it is not rebindable, and F10 is reject
 | | VSync (`window.vsync`) | live |
 | | Render mode (`render.mode`) | **restart** (the loop is chosen once at start) |
 | | Max FPS (`render.maxFps`: display rate / 60 / 120 / 144 / 165 / 240 / unlimited = 1000) | live (the game loop re-reads it every iteration) |
+| | HD text (`render.hdText`, default on) | live (see "HD text") |
 | | FPS overlay (`debug.overlay`) | live (same as F3) |
 | 3D | View 2D/3D (`render.view`) | live (same as F5) |
 | | pitch, distance, fov, focus offset, lighting, shadows off/low/high, sun azimuth / elevation / strength, ambient, surround, fog, houses and walls (`render3d.*`) | live: written to a private tune file that `Renderer3D` re-reads (`Renderer3D.reloadSettings`, the `-Dg3.render3d.tune` mechanism), throttled to one rebuild per 120 ms. Not available when you pass your own `-Dg3.render3d.tune` (then use F6) |

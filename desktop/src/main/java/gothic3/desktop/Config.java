@@ -26,6 +26,8 @@ public final class Config {
         // render.maxFps: 0 = follow the display (vsync); N = cap/pace at N frames per second
         {"render.mode", "interpolated"},
         {"render.maxFps", "0"},
+        // render.hdText: text is drawn at window resolution (crisp) instead of being upscaled with the picture
+        {"render.hdText", "true"},
         // render.view: 2d = the original tile view; 3d = Pokemon3D-style diorama (tilted perspective camera). F5 toggles at runtime.
         // render3d.*: pitch (deg above horizontal), fov (vertical deg), distance (camera to look-at point, tiles), focusOffset (tiles the player sits below screen centre), lean (deg), vscale, fog,
         //             tiles (path of the tile->shape table, F6 reloads it)

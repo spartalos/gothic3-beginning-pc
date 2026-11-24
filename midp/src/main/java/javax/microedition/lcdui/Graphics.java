@@ -26,7 +26,80 @@ public class Graphics {
     public void setCapture(boolean on) { capturing = on; }
 
     /** Non-MIDP: fills the whole buffer with transparent black (ARGB 0); blending onto it then keeps real alpha. */
-    public void clearTransparent() { java.util.Arrays.fill(buf, 0); }
+    public void clearTransparent() {
+        java.util.Arrays.fill(buf, 0);
+        if (layer != null) layer.clear();
+    }
+
+    // PORT: HD text (gothic3.platform.TextLayer). Only the screen buffer's Graphics has a layer; offscreen images keep rasterising text.
+    private gothic3.platform.TextLayer layer;
+
+    /** Non-MIDP: makes this the screen Graphics whose text is recorded for the presenter (see {@link gothic3.platform.TextLayer}). */
+    public void setTextLayer(gothic3.platform.TextLayer l) { layer = l; }
+
+    /** Rasterises one recorded text op into the buffer (the classic look); state is preserved. */
+    private void rasterise(gothic3.platform.TextLayer.Op o) {
+        int sc = color, sx0 = x0, sy0 = y0, sx1 = x1, sy1 = y1;
+        boolean sCap = capturing;
+        capturing = false;
+        color = 0xFF000000 | o.rgb;
+        x0 = Math.max(0, o.cx0);
+        y0 = Math.max(0, o.cy0);
+        x1 = Math.min(bw, o.cx1);
+        y1 = Math.min(bh, o.cy1);
+        o.font.drawGlyphs(this, o.text, o.x, o.y);
+        color = sc;
+        x0 = sx0;
+        y0 = sy0;
+        x1 = sx1;
+        y1 = sy1;
+        capturing = sCap;
+    }
+
+    /** Rasterises every pending text op into the buffer and empties the layer. */
+    public void flushAllText() {
+        if (layer == null || layer.size() == 0) return;
+        for (int i = 0; i < layer.size(); i++) rasterise(layer.get(i));
+        layer.clear();
+    }
+
+    /** Non-MIDP: draws recorded text ops onto a copy of a frame (screenshots, verification). */
+    public static void burnText(int[] px, int w, int h, gothic3.platform.TextLayer.Op[] ops) {
+        Graphics g = new Graphics(px, w, h);
+        for (gothic3.platform.TextLayer.Op o : ops) g.rasterise(o);
+    }
+
+    /**
+     * Something is about to be drawn into absolute rectangle [ax0,ax1) x [ay0,ay1): pending text ops it overlaps (and, to keep the
+     * original stacking, earlier ops overlapping those) are rasterised first, so they end up under the new pixels.
+     */
+    private void touch(int ax0, int ay0, int ax1, int ay1) {
+        gothic3.platform.TextLayer l = layer;
+        if (l == null || l.size() == 0 || capturing) return;
+        ax0 = Math.max(ax0, x0);
+        ay0 = Math.max(ay0, y0);
+        ax1 = Math.min(ax1, x1);
+        ay1 = Math.min(ay1, y1);
+        if (ax0 >= ax1 || ay0 >= ay1) return;
+        int n = l.size();
+        boolean[] drop = null;
+        for (int i = n - 1; i >= 0; i--) {
+            gothic3.platform.TextLayer.Op o = l.get(i);
+            boolean hit = o.intersects(ax0, ay0, ax1, ay1);
+            if (!hit && drop != null) {
+                for (int j = i + 1; j < n && !hit; j++) if (drop[j] && o.intersects(l.get(j).bx0, l.get(j).by0, l.get(j).bx1, l.get(j).by1)) hit = true;
+            }
+            if (hit) {
+                if (drop == null) drop = new boolean[n];
+                drop[i] = true;
+            }
+        }
+        if (drop == null) return;
+        for (int i = 0; i < n; i++) if (drop[i]) rasterise(l.get(i));
+        l.remove(drop);
+    }
+
+    private void touchAll() { touch(Integer.MIN_VALUE / 2, Integer.MIN_VALUE / 2, Integer.MAX_VALUE / 2, Integer.MAX_VALUE / 2); }
 
     Graphics(int[] buf, int w, int h) {
         this.buf = buf;
@@ -137,12 +210,14 @@ public class Graphics {
             gothic3.platform.scene3d.DrawCapture.rect(color, x + tx, y + ty, w, h);
             return;
         }
+        touch(x + tx, y + ty, x + tx + w, y + ty + h);
         fillAbs(x + tx, y + ty, w, h);
     }
 
     /** MIDP: covers (w+1) x (h+1) pixels. */
     public void drawRect(int x, int y, int w, int h) {
         if (w < 0 || h < 0) return;
+        touch(x + tx, y + ty, x + tx + w + 1, y + ty + h + 1);
         if (stroke == DOTTED) {
             drawLine(x, y, x + w, y);
             drawLine(x + w, y, x + w, y + h);
@@ -161,6 +236,7 @@ public class Graphics {
 
     public void drawLine(int xa, int ya, int xb, int yb) {
         int ax = xa + tx, ay = ya + ty, bx = xb + tx, by = yb + ty;
+        touch(Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx) + 1, Math.max(ay, by) + 1);
         if (stroke == SOLID) {
             if (ay == by) { hline(Math.min(ax, bx), Math.max(ax, bx), ay); return; }
             if (ax == bx) {
@@ -184,6 +260,7 @@ public class Graphics {
 
     public void fillTriangle(int xa, int ya, int xb, int yb, int xc, int yc) {
         if (capturing) return;
+        touchAll();
         int ax = xa + tx, ay = ya + ty, bx = xb + tx, by = yb + ty, cx = xc + tx, cy = yc + ty;
         int minY = Math.min(ay, Math.min(by, cy)), maxY = Math.max(ay, Math.max(by, cy));
         int minX = Math.min(ax, Math.min(bx, cx)), maxX = Math.max(ax, Math.max(bx, cx));
@@ -208,6 +285,7 @@ public class Graphics {
     private void arc(int x, int y, int w, int h, int start, int sweep, boolean fill) {
         if (capturing) return;
         if (w < 0 || h < 0) return;
+        touch(x + tx, y + ty, x + tx + w + 1, y + ty + h + 1);
         double cx = x + tx + w / 2.0, cy = y + ty + h / 2.0, rx = w / 2.0, ry = h / 2.0;
         int lo = Math.max(y + ty, y0), hi = Math.min(y + ty + h, y1 - 1);
         for (int py = lo; py <= hi; py++)
@@ -236,6 +314,7 @@ public class Graphics {
 
     private void roundRect(int x, int y, int w, int h, int aw, int ah, boolean fill) {
         if (capturing) return;
+        touch(x + tx, y + ty, x + tx + w + 1, y + ty + h + 1);
         double rx = Math.min(Math.abs(aw), w) / 2.0, ry = Math.min(Math.abs(ah), h) / 2.0;
         for (int py = 0; py < h; py++)
             for (int px = 0; px < w; px++) {
@@ -279,6 +358,11 @@ public class Graphics {
         else if ((anchor & RIGHT) != 0) ax -= w;
         if ((anchor & BOTTOM) != 0) ay -= font.getHeight();
         else if ((anchor & BASELINE) != 0) ay -= font.getBaselinePosition();
+        if (layer != null && !capturing && gothic3.platform.TextLayer.enabled) { // PORT: HD text, drawn by the presenter at window resolution
+            gothic3.platform.TextLayer.Op o = new gothic3.platform.TextLayer.Op(s, font, color, ax, ay, x0, y0, x1, y1);
+            if (!o.empty()) layer.add(o);
+            return;
+        }
         font.drawGlyphs(this, s, ax, ay);
     }
 
@@ -321,6 +405,7 @@ public class Graphics {
             gothic3.platform.scene3d.DrawCapture.region(src, xs, ys, w, h, transform, ax, ay, tw, th);
             return;
         }
+        touch(ax, ay, ax + tw, ay + th);
         int[] sp = src.pixels;
         int sw = src.width;
         // precompute per-transform stepping: src = base + dx*stepX + dy*stepY
@@ -373,6 +458,7 @@ public class Graphics {
     public void drawRGB(int[] rgb, int offset, int scanlength, int x, int y, int w, int h, boolean processAlpha) {
         if (rgb == null) throw new NullPointerException();
         if (w == 0 || h == 0 || capturing) return;
+        touch(x + tx, y + ty, x + tx + w, y + ty + h);
         for (int j = 0; j < h; j++)
             for (int i = 0; i < w; i++) {
                 int ax = x + tx + i, ay = y + ty + j;
@@ -389,6 +475,7 @@ public class Graphics {
 
     public void copyArea(int xs, int ys, int w, int h, int xd, int yd, int anchor) {
         if (w <= 0 || h <= 0 || capturing) return;
+        touchAll();   // reads and writes the buffer: pending text must be in the pixels
         int[] tmp = new int[w * h];
         int sx = xs + tx, sy = ys + ty;
         for (int j = 0; j < h; j++)

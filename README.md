@@ -43,7 +43,7 @@ images, GitHub Releases): see "Building & releases" in `docs/platform.md`; they 
 | F5 | switch between the 2D (original) and 3D view (this session; the saved choice is in the F10 options) |
 | F3 | status overlay (fps, tick rate) |
 | F8 (gamepad: right stick click) | fast forward on / off (speed in F10 > Display) |
-| F10 (gamepad: Start + Back) | advanced settings (display, 3D, controls, audio incl. Sound effects on/off for music only); 3D > Graphics quality picks Low / Medium / High / Ultra at once |
+| F10 (gamepad: Start + Back) | advanced settings (display, 3D, controls, audio incl. Sound effects on/off for music only; Display > HD text switches the crisp window-resolution text on / off); 3D > Graphics quality picks Low / Medium / High / Ultra at once |
 | F11 / Alt + Enter | fullscreen |
 
 On the first start the game asks whether you want sound and whether you want the 2D or the 3D view. Both answers are saved and not asked again; change them in the F10 options (Audio > Sound, 3D > View, Game > Ask startup questions again).

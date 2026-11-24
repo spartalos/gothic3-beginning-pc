@@ -99,6 +99,12 @@ public final class Font {
     public boolean isItalic() { return (style & STYLE_ITALIC) != 0; }
     public boolean isUnderlined() { return (style & STYLE_UNDERLINED) != 0; }
     public int getHeight() { return height; }
+
+    /** Non-MIDP (HD text): nominal AWT pixel size of this font at the game's logical resolution. */
+    public float nominalPx() { return PX[size == SIZE_SMALL ? 0 : size == SIZE_LARGE ? 2 : 1]; }
+
+    /** Non-MIDP (HD text): the AWT font (bold / italic as requested) at an arbitrary pixel size. */
+    public java.awt.Font awtFont(float px) { return awt.deriveFont(px); }
     public int getBaselinePosition() { return ascent; }
 
     public int charWidth(char ch) { return glyph(ch).advance; }
