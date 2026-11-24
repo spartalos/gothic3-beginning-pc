@@ -211,6 +211,8 @@ public final class Config {
         {"audio.mute", "false"},
         // audio.soundfont: a General MIDI .sf2 (file or folder) for the music; empty = soundfont.sf2 next to the app jar, else the JDK default bank
         {"audio.soundfont", ""},
+        // audio.sfx: sound effects (the .amr sounds) on/off; off = music only. Live; --no-sfx forces off for the run. docs/audio.md
+        {"audio.sfx", "true"},
         // audio.enabled: answer to the game's startup "sound?" question (applied at start, like answering it); firstRun.done: the startup
         // questions (sound, then 2D/3D -> render.view) were answered and are skipped from now on. Set it to false to be asked again.
         {"audio.enabled", "true"},

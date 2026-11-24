@@ -192,6 +192,7 @@ public final class OptionsMenu {
         Tab au = new Tab("Audio");
         set(au, "Master volume", "audio.volume").slider(0, 100, 5).hint("Music and effects share one level.");
         set(au, "Mute", "audio.mute").toggle();
+        set(au, "Sound effects", "audio.sfx").toggle().hint("Off = background music only. Live. --no-sfx forces off.");
         set(au, "Sound (game setting)", "audio.enabled").toggle().restart()
                 .hint("The startup sound question; applies on restart. Mute above is live. --no-audio always wins.");
         au.items.add(reset(au));
@@ -274,7 +275,7 @@ public final class OptionsMenu {
             case "render.maxFps": win.applyPacing(Math.max(0, cfg.getInt("render.maxFps", 0))); break;
             case "debug.overlay": if (on(value) != app.overlayVisible()) app.toggleOverlay(); break;
             case "render.view": if (value.equalsIgnoreCase("3d") != RenderConfig.view3d()) app.toggleView3d(); break;
-            case "audio.volume": case "audio.mute": applyAudio(); break;
+            case "audio.volume": case "audio.mute": case "audio.sfx": applyAudio(); break;
             case "pad.stick.enabled": case "pad.stick.deadzone": input.reloadBindings(cfg); break;
             case "post.preset": if (!value.equals("custom")) gothic3.desktop.render3d.post.PostSettings.applyPreset(cfg, value); break;
             default:
@@ -289,6 +290,7 @@ public final class OptionsMenu {
     public void applyAudio() {
         float v = cfg.getBool("audio.mute") ? 0f : Math.max(0, Math.min(100, cfg.getInt("audio.volume", 100))) / 100f;
         javax.microedition.media.impl.PlayerFactory.setMasterVolume(v);
+        javax.microedition.media.impl.PlayerFactory.setSfxEnabled(cfg.getBool("audio.sfx") && !Boolean.getBoolean("g3.sfx.off"));
     }
 
     /** Called every frame: throttled 3D settings reload and debounced config save. */

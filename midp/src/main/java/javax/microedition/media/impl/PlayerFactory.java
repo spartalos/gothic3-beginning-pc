@@ -36,6 +36,17 @@ public final class PlayerFactory {
         return MasterVolume.get();
     }
 
+    private static volatile boolean sfxEnabled = !Boolean.getBoolean("g3.sfx.off");
+
+    /** Sound effects (the AMR players) on/off, live: an effect started while off plays on a silent timer. Music is unaffected. */
+    public static void setSfxEnabled(boolean on) {
+        sfxEnabled = on;
+    }
+
+    static boolean sfxEnabled() {
+        return sfxEnabled;
+    }
+
     private static Backend audible(Backend b, long durationUs) {
         return MUTED ? new SilentBackend(durationUs) : new AsyncBackend(new FallbackBackend(b, durationUs));
     }
@@ -72,7 +83,8 @@ public final class PlayerFactory {
             try (InputStream in = gothic3.platform.Platform.resourceLoader().getResourceAsStream(path)) {
                 if (in != null) {
                     byte[] wav = in.readAllBytes();
-                    return new BasePlayer(audible(new ClipBackend(wav), wavDuration(wav)), "audio/amr");
+                    long d = wavDuration(wav);
+                    return new BasePlayer(new SfxGateBackend(audible(new ClipBackend(wav), d), d), "audio/amr");
                 }
             } catch (IOException e) {
                 System.err.println("[media] cannot read " + path + ": " + e);
