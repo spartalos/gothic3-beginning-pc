@@ -36,10 +36,14 @@ final class MidiBackend implements Backend {
                     System.err.println("[audio] soundfont " + sf + " is not supported by the synthesizer (using the default bank)");
                     bank = null;
                 }
-                s.open(); // open() always loads the default bank (a load before open is discarded), so swap it afterwards
+                if (AudioSink.NULL_LINE && MidiRenderer.available()) {
+                    s = openNullLive(s.getClass());
+                } else {
+                    s.open(); // open() always loads the default bank (a load before open is discarded), so swap it afterwards
                 if (bank != null) {
                     s.unloadAllInstruments(s.getDefaultSoundbank());
                     s.loadAllInstruments(bank);
+                }
                 }
                 synth = s;
                 System.err.println("[audio] MIDI soundbank: " + (bank != null ? sf + " (" + s.getLoadedInstruments().length + " instruments)"
@@ -50,6 +54,42 @@ final class MidiBackend implements Backend {
             }
         }
         return synth;
+    }
+
+    /**
+     * -Dg3.audio.nullLine=true (debug): the live synthesizer renders in stream mode and a "pump" thread pulls its output in real time
+     * into a simulated line (120 ms buffer, 30 ms reads, max priority: Gervill's own defaults) that counts underruns instead of playing.
+     */
+    private static Synthesizer openNullLive(Class<?> cls) throws Exception {
+        Synthesizer s = (Synthesizer) cls.getConstructor().newInstance();
+        javax.sound.sampled.AudioFormat fmt = new javax.sound.sampled.AudioFormat(MidiRenderer.RATE, 16, 2, true, false);
+        javax.sound.sampled.AudioInputStream in = (javax.sound.sampled.AudioInputStream) cls
+            .getMethod("openStream", javax.sound.sampled.AudioFormat.class, java.util.Map.class).invoke(s, fmt, null);
+        AudioSink.NullSink sink = new AudioSink.NullSink(MidiRenderer.RATE, 120, "live");
+        sink.start();
+        Thread t = new Thread(() -> {
+            byte[] buf = new byte[MidiRenderer.RATE * 30 / 1000 * 4];
+            try {
+                while (true) {
+                    int off = 0;
+                    while (off < buf.length) {
+                        int n = in.read(buf, off, buf.length - off);
+                        if (n < 0) {
+                            return;
+                        }
+                        off += n;
+                    }
+                    sink.write(buf, 0, buf.length);
+                }
+            } catch (Exception e) {
+                // closed
+            }
+        }, "media-midi-live-pump");
+        t.setDaemon(true);
+        t.setPriority(Thread.MAX_PRIORITY);
+        t.start();
+        Runtime.getRuntime().addShutdownHook(new Thread(sink::close));
+        return s;
     }
 
     /** Sends the global output level to the shared synthesizer as a universal "master volume" SysEx (14 bit). */
