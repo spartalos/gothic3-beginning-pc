@@ -51,4 +51,13 @@ sound effects to WAV; the app runs it as a child process and you may replace it 
   https://sourceforge.net/projects/opencore-amr/ (source: opencore-amr-0.1.6.tar.gz, SHA-256 483eb4061088e2b34b358e47540b5d495a96cd468e361050fae615b1809dc4a1;
   licence and NOTICE in `ffmpeg/LICENSES/`). FFmpeg's native AMR-NB decoder is not used because it cannot decode this game's audio.
 
+Bundled in the app images (jpackage) and offered as a separate release file next to the fat jar, as `soundfont/GeneralUser-GS.sf2` (never committed to
+the repository; downloaded by the release workflow with scripts/fetch-soundfont.sh at a pinned commit and SHA-256), used for the MIDI music:
+
+* GeneralUser GS v2.0.3 SoundFont, copyright S. Christian Collins - free licence ("You may use GeneralUser GS without restriction for your own music
+  creation, private or commercial ... Please feel free to use it in your software projects, and to modify the SoundFont bank or its packaging to suit
+  your needs"; the contained samples inherit usage rights that allow full use). Licence text: `soundfont/GeneralUser-GS-LICENSE.txt` in the app image.
+  https://github.com/mrbumpy409/GeneralUser-GS (SHA-256 of the .sf2: 9575028c7a1f589f5770fccc8cff2734566af40cd26ed836944e9a5152688cfe).
+  You can replace it with any other General MIDI .sf2 (docs/audio.md).
+
 Build and test tooling (not shipped): Gradle (Apache 2.0), JDK.

@@ -30,8 +30,20 @@ final class MidiBackend implements Backend {
             }
             try {
                 Synthesizer s = MidiSystem.getSynthesizer();
-                s.open();
+                java.io.File sf = SoundbankLocator.find();
+                javax.sound.midi.Soundbank bank = sf == null ? null : SoundbankLocator.load(sf);
+                if (bank != null && !s.isSoundbankSupported(bank)) {
+                    System.err.println("[audio] soundfont " + sf + " is not supported by the synthesizer (using the default bank)");
+                    bank = null;
+                }
+                s.open(); // open() always loads the default bank (a load before open is discarded), so swap it afterwards
+                if (bank != null) {
+                    s.unloadAllInstruments(s.getDefaultSoundbank());
+                    s.loadAllInstruments(bank);
+                }
                 synth = s;
+                System.err.println("[audio] MIDI soundbank: " + (bank != null ? sf + " (" + s.getLoadedInstruments().length + " instruments)"
+                    : "JDK default (crude; put a General MIDI .sf2 next to the app jar or set audio.soundfont, docs/audio.md)"));
             } catch (Throwable t) {
                 synthFailed = true;
                 throw new MediaException("Cannot open MIDI synthesizer: " + t);

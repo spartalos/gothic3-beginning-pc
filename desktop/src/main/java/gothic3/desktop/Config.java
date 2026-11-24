@@ -209,6 +209,8 @@ public final class Config {
         // audio.volume: 0..100 master output level; audio.mute silences everything without changing the level
         {"audio.volume", "100"},
         {"audio.mute", "false"},
+        // audio.soundfont: a General MIDI .sf2 (file or folder) for the music; empty = soundfont.sf2 next to the app jar, else the JDK default bank
+        {"audio.soundfont", ""},
         // audio.enabled: answer to the game's startup "sound?" question (applied at start, like answering it); firstRun.done: the startup
         // questions (sound, then 2D/3D -> render.view) were answered and are skipped from now on. Set it to false to be asked again.
         {"audio.enabled", "true"},

@@ -87,6 +87,7 @@ public final class DesktopLauncher {
             }
         }
         if (opt.noAudio) System.setProperty("g3.audio.off", "true");
+        if (System.getProperty("g3.soundfont") == null && !cfg.get("audio.soundfont").isBlank()) System.setProperty("g3.soundfont", cfg.get("audio.soundfont"));
         // startup questions (sound, 2D/3D): interactive launches only, so scripted / deterministic / verify runs keep the original flow tick for tick
         // (-Dg3.startup.force=true enables them anyway, for screenshots). --no-audio and the view flags always win over the saved answers.
         if (Boolean.getBoolean("g3.startup.force") || (!opt.deterministic && !opt.verify && opt.script == null && opt.traceTicks == null)) {
