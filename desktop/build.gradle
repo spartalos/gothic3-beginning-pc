@@ -130,6 +130,17 @@ tasks.register('appImage', Exec) {
         } else {
             logger.warn('appImage: no -PffmpegDir given, the image will not bundle ffmpeg (sound effects need ffmpeg on PATH)')
         }
+        // GeneralUser GS SoundFont for the MIDI music (scripts/fetch-soundfont.sh, pinned + SHA-256 checked; never committed), found by
+        // SoundbankLocator at <app dir>/soundfont/*.sf2. -PsoundfontDir=<out dir of the script> (or env G3_SOUNDFONT_DIR); without it the image
+        // uses the JDK's default bank.
+        def sfDir = providers.gradleProperty('soundfontDir').orElse(providers.environmentVariable('G3_SOUNDFONT_DIR')).getOrNull()
+        if (sfDir) {
+            if (!new File(sfDir).listFiles({ d, n -> n.endsWith('.sf2') } as FilenameFilter)) throw new GradleException("soundfontDir ${sfDir} has no .sf2")
+            copy { from(sfDir) into inDir.get().dir('soundfont') }   // the licence text rides along
+            logger.lifecycle("appImage: bundling the SoundFont from ${sfDir}")
+        } else {
+            logger.warn('appImage: no -PsoundfontDir given, the image will use the JDK default MIDI bank (docs/audio.md)')
+        }
         def v = project.version.toString()
         // macOS requires a non-zero major version
         def appVer = (isMac && v.startsWith('0.')) ? '1' + v.substring(1) : v

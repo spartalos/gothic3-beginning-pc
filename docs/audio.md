@@ -8,6 +8,23 @@ Pure-JDK implementation in `midp/src/main/java/javax/microedition/media/` (API) 
   so only the interned `PlayerListener` constants are ever passed. Callbacks run on the `media-events` thread.
 - MIDI: one private `Sequencer` per prefetched player, all feeding one shared Gervill `Synthesizer`
   (opened lazily). Stop sends all-notes-off.
+- MIDI SoundFont: without a bank Gervill falls back to its generated "emergency" set, which sounds crude. `MidiBackend` therefore loads a SoundFont when it
+  opens the shared synthesizer (never with `--no-audio`: that uses silent players and never touches the synthesizer). `SoundbankLocator` picks the first of:
+  1. `-Dg3.soundfont=<file.sf2 or folder>`, which the launcher fills from the config key `audio.soundfont` (in `config.properties`; the system property wins);
+  2. `soundfont.sf2`, else the first `*.sf2` of the `soundfont/` folder, else any `*.sf2`, next to the app jar (`<app>/soundfont/` in the app images);
+  3. the JDK default bank (current behaviour before this feature).
+
+  A missing or unreadable file logs a line and falls back. Which bank is in use is logged once on stderr (`[audio] MIDI soundbank: ...`). The swap is
+  `open()` (which always loads the default bank), `unloadAllInstruments(default)`, `loadAllInstruments(sf2)`; loading before `open()` is silently discarded by
+  Gervill. Loading GeneralUser GS (32 MB) costs about 1 s on first music start (on the `media-audio` thread, `open` allows 5 s). The game's bank selects
+  (CC0 = 122 for melodic channels, 123 for the drum channel, CC32 = 0, GM program numbers) all resolve to the normal GM instruments with GeneralUser GS (checked
+  by offline rendering, every channel of every `NN.mid` is non-silent). Gervill's quality knobs (`interpolation`, `max polyphony`, `large mode`) are only
+  reachable through the internal `com.sun.media.sound.AudioSynthesizer`, which the app does not use, so the defaults stay.
+  The release workflow downloads GeneralUser GS v2.0.3 (S. Christian Collins, free licence incl. redistribution; pinned commit and SHA-256 in
+  `scripts/fetch-soundfont.sh`) into every app image (`soundfont/GeneralUser-GS.sf2` + licence text) and attaches it to the release next to the fat jar. The `.sf2` is
+  never committed (gitignored). To use your own bank: drop a General MIDI `.sf2` into the app's `soundfont/` folder (or next to the jar), or set `audio.soundfont`
+  to its path; delete/rename the bundled one to go back to the JDK bank. Local packaging with it: `scripts/fetch-soundfont.sh /some/dir`, then
+  `./gradlew :desktop:packageApp -PsoundfontDir=/some/dir` (also env `G3_SOUNDFONT_DIR`).
 - AMR: the JDK cannot decode it. `AmrConverter` (buildtools) converts each `.amr` with ffmpeg
   (OpenCORE decoder; ffmpeg's native one fails on 6.7 kbps / SID frames; the app images bundle a minimal ffmpeg, see docs/byo-jar.md "Audio") to 22050 Hz mono WAV in
   `game/gen/resources/audio/` and writes `index.properties` (`sha1(original amr bytes)=audio/NN.wav`).

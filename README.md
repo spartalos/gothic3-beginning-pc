@@ -21,6 +21,8 @@ This port does not contain the game. It builds it on your computer from your own
 copy, e.g. from a phone backup). Put it in your Downloads folder (or start the app with `--jar <path>`, or choose / drop it on the setup screen). The first start
 builds the game (about 10 seconds), later starts are instant. The 25 sound effects are converted with a small ffmpeg that ships inside the app images (the plain fat jar uses `ffmpeg`
 from PATH; without any ffmpeg the game runs silent apart from the music). Details: `docs/byo-jar.md`.
+The music (MIDI) sounds far better with a SoundFont: the app images ship GeneralUser GS; with the plain fat jar put any General MIDI `.sf2` next to the jar
+(or set `audio.soundfont` / `-Dg3.soundfont=`), see `docs/audio.md`.
 
 Run the release build with `java -jar gothic3-<version>.jar` or start the app image (`Gothic3/bin/Gothic3`, `Gothic3.app`, `Gothic3.exe`).
 

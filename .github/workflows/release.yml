@@ -44,9 +44,14 @@ jobs:
       # Minimal LGPL ffmpeg (AMR-NB -> WAV only), built on this OS (cached by script hash). A failure here fails this OS's package job;
       # the other OSes are independent (no cross-OS job dependency, so a missing runner for one OS never blocks the others).
       - uses: ./.github/actions/minimal-ffmpeg
-      - name: Package app image (jpackage + jlink runtime, with the minimal ffmpeg)
+      # GeneralUser GS SoundFont for the MIDI music: downloaded from the author's official repository at a pinned commit, SHA-256 verified,
+      # bundled into the app image (never committed). Licence: free to use and redistribute, see NOTICE.
+      - name: Fetch SoundFont (GeneralUser GS 2.0.3, SHA-256 pinned)
         shell: bash
-        run: ./gradlew :desktop:packageApp -PnoGame -PffmpegDir="$PWD/ffmpeg-out" --no-daemon
+        run: scripts/fetch-soundfont.sh "$PWD/soundfont-out"
+      - name: Package app image (jpackage + jlink runtime, with the minimal ffmpeg and the SoundFont)
+        shell: bash
+        run: ./gradlew :desktop:packageApp -PnoGame -PffmpegDir="$PWD/ffmpeg-out" -PsoundfontDir="$PWD/soundfont-out" --no-daemon
       - name: Build fat jar (once)
         if: matrix.os == 'ubuntu-22.04'
         shell: bash
@@ -55,7 +60,7 @@ jobs:
       # g3 classes or jar-derived game data. (build/packageApp already depend on these; the explicit steps make the guard visible.)
       - name: Guard - no game content in the app image
         shell: bash
-        run: ./gradlew :desktop:checkNoGameContentImage -PnoGame -PffmpegDir="$PWD/ffmpeg-out" --no-daemon
+        run: ./gradlew :desktop:checkNoGameContentImage -PnoGame -PffmpegDir="$PWD/ffmpeg-out" -PsoundfontDir="$PWD/soundfont-out" --no-daemon
       - name: Guard - no game content in the fat jar
         shell: bash
         run: ./gradlew :desktop:checkNoGameContent -PnoGame --no-daemon
@@ -67,6 +72,7 @@ jobs:
             desktop/build/dist/gothic3-*.zip
             desktop/build/dist/gothic3-*.tar.gz
             ${{ matrix.os == 'ubuntu-22.04' && 'desktop/build/libs/gothic3-*.jar' || '' }}
+            ${{ matrix.os == 'ubuntu-22.04' && 'soundfont-out/*' || '' }}
 
   release:
     name: Create GitHub Release

@@ -13,3 +13,8 @@ local.properties
 /original/*
 .lwjgl/
 .claude/
+
+# SoundFonts are bundled at release time (scripts/fetch-soundfont.sh), never committed
+*.sf2
+*.sf3
+/soundfont-out/
