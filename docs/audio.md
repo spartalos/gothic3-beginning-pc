@@ -26,6 +26,28 @@ Pure-JDK implementation in `midp/src/main/java/javax/microedition/media/` (API) 
   to its path; delete/rename the bundled one to go back to the JDK bank. Local packaging with it: `scripts/fetch-soundfont.sh /some/dir`, then
   `./gradlew :desktop:packageApp -PsoundfontDir=/some/dir` (also env `G3_SOUNDFONT_DIR`). Dev runs: `scripts/fetch-soundfont.sh soundfont-out`
   (gitignored); `./gradlew :desktop:run` then passes `-Dg3.soundfont=soundfont-out` unless you give your own `-Dg3.soundfont`.
+- MIDI music is played from pre-rendered PCM (`PcmMidiBackend`, `MidiRenderer`, `AudioSink`), not synthesised in real time. Reason: the live path (a `Sequencer`
+  per player feeding Gervill's real-time render thread, 120 ms default line buffer) starves whenever the machine is busy (map loads, fights: GC, CPU spikes), and the
+  music stutters; this happened with the JDK default bank too, so it is not the SoundFont. Now each MIDI is rendered offline once (Gervill `SoftSynthesizer.openStream`,
+  44.1 kHz stereo 16 bit, the sequence's tempo map applied, + 2 s tail) on a low-priority background thread (`media-midi-render`) when the player is created, cached in
+  memory (soft refs) and on disk (`<data dir>/gothic3-pc/cache/music/<sha1(midi + soundfont name/size/mtime + rate + version)>.pcm`, override `-Dg3.audio.cache=DIR`),
+  and played through a `SourceDataLine` with a 400 ms buffer (`-Dg3.audio.bufferMs`) fed by a max-priority thread that only copies bytes (no allocation in the loop).
+  The feeder can therefore be starved up to 400 ms (live: 120 ms) and nothing else is real-time work. Until a track's render is ready (first run only: 0.4-2.4 s per track
+  with the SoundFont, 0.04-1.3 s default bank) that player uses the live path; the choice is made at prefetch/start time.
+  Player semantics are kept: `start/stop/close`, `setLoopCount` (whole sequence, tick 0 to the last tick, like the live `Sequencer` loop; -1 = forever; the tail of a pass is
+  mixed over the start of the next so loops are seamless), `getMediaTime` (frames played by the line, within the pass) / `setMediaTime` (applied by the next start), duration,
+  `endOfMedia` (fired when the last music frame has been played; the tail rings out), `VolumeControl`/master volume (linear gain applied while copying, so a change is heard
+  after up to the buffer length, 0.4 s; the live path used a master-volume SysEx), stop = 30 ms fade (no click). The SFX gate and `--no-audio` are unaffected.
+  Offline rendering needs the non-exported `com.sun.media.sound` (reflection): the launcher scripts, `gradle run` and the app image pass
+  `--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED`, the fat jar has `Add-Exports` in its manifest. Without it (or if the render fails) the live path stays in use.
+  Memory: all nine tracks are 487 s of music = 86 MB of PCM, longest 26 MB (03.mid); only players that are open hold their data (the rest is a soft cache / the disk file).
+  Debug: `-Dg3.audio.livemidi=true` forces the old live path; `-Dg3.audio.nullLine=true` replaces every MIDI output line with a silent real-time simulation that counts
+  underruns (the live synth is then pumped into a 120 ms simulated line from a max-priority thread, like Gervill does; PCM goes to a 400 ms one) and prints
+  `[audio] nullLine(pcm|live) closed: underruns=N worstGapMs=.. minAheadMs=..` at exit. Use it with `--no-sfx` (effects still use real clips) for measurements without sound.
+  Measurements (12-core machine, `scripts`-style run: walk-ticks boot + 24 map warps, ~2500 ticks, nullLine, no sound; "underruns" = times the simulated device ran dry):
+  live synth, default bank: 44 underruns, worst gap 315 ms (taskset 2 CPUs: 31 / 164 ms); live, GeneralUser GS: 56 / 329 ms (2 CPUs: 18 / 129 ms);
+  pre-rendered PCM: 0 underruns on every line, default bank all CPUs and 2 CPUs, and GeneralUser GS (warm cache). G1 pauses in these runs are 12-19 ms (about 2700 per run), too short
+  to explain 300 ms gaps alone: the cause is the real-time synth thread being starved by the load, which the PCM path removes. Not measured: audible result (nobody listened), the real device's own underrun behaviour.
 - AMR: the JDK cannot decode it. `AmrConverter` (buildtools) converts each `.amr` with ffmpeg
   (OpenCORE decoder; ffmpeg's native one fails on 6.7 kbps / SID frames; the app images bundle a minimal ffmpeg, see docs/byo-jar.md "Audio") to 22050 Hz mono WAV in
   `game/gen/resources/audio/` and writes `index.properties` (`sha1(original amr bytes)=audio/NN.wav`).

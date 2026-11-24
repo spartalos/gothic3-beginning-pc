@@ -47,6 +47,9 @@ public final class PlayerFactory {
         return sfxEnabled;
     }
 
+    /** MIDI music from pre-rendered PCM (docs/audio.md); -Dg3.audio.livemidi=true forces the old real-time synthesizer path. */
+    static final boolean PCM_MIDI = !Boolean.getBoolean("g3.audio.livemidi");
+
     private static Backend audible(Backend b, long durationUs) {
         return MUTED ? new SilentBackend(durationUs) : new AsyncBackend(new FallbackBackend(b, durationUs));
     }
@@ -70,7 +73,15 @@ public final class PlayerFactory {
     private static Player midi(byte[] data) throws MediaException {
         try {
             Sequence seq = MidiSystem.getSequence(new ByteArrayInputStream(data));
-            return new BasePlayer(MUTED ? new SilentBackend(seq.getMicrosecondLength()) : new AsyncBackend(new FallbackBackend(new MidiBackend(seq), seq.getMicrosecondLength())), "audio/midi");
+            Backend b;
+            if (MUTED) {
+                b = new SilentBackend(seq.getMicrosecondLength());
+            } else {
+                MidiBackend live = new MidiBackend(seq);
+                Backend primary = PCM_MIDI ? new PcmMidiBackend(live, seq, data, SoundbankLocator.find()) : live;
+                b = new AsyncBackend(new FallbackBackend(primary, seq.getMicrosecondLength()));
+            }
+            return new BasePlayer(b, "audio/midi");
         } catch (Exception e) {
             throw new MediaException("Invalid MIDI data: " + e);
         }

@@ -23,7 +23,7 @@ dependencies {
 
 application {
     mainClass = 'gothic3.desktop.DesktopLauncher'
-    applicationDefaultJvmArgs = ['-Djava.awt.headless=true', '-Dfile.encoding=UTF-8']
+    applicationDefaultJvmArgs = ['-Djava.awt.headless=true', '-Dfile.encoding=UTF-8', '--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED']  // add-exports: offline MIDI rendering (docs/audio.md)
 }
 
 // ./gradlew :desktop:run --args="--frames-dir out/frames"
@@ -90,7 +90,7 @@ def isWin = osName.contains('win')
 def isMac = osName.contains('mac')
 def osId = isWin ? 'windows' : isMac ? 'macos' : 'linux'
 def archId = System.getProperty('os.arch').replace('amd64', 'x64').replace('x86_64', 'x64')
-def runtimeJvmArgs = ['-Djava.awt.headless=true', '-Dfile.encoding=UTF-8', '--enable-native-access=ALL-UNNAMED']
+def runtimeJvmArgs = ['-Djava.awt.headless=true', '-Dfile.encoding=UTF-8', '--enable-native-access=ALL-UNNAMED', '--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED']
 if (isMac) runtimeJvmArgs += ['-XstartOnFirstThread']  // LWJGL3/GLFW needs the first thread on macOS
 
 tasks.register('dist', Jar) {
@@ -100,7 +100,7 @@ tasks.register('dist', Jar) {
     destinationDirectory = layout.buildDirectory.dir('libs')
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest {
-        attributes('Main-Class': mainClassName, 'Enable-Native-Access': 'ALL-UNNAMED', 'Implementation-Version': project.version)
+        attributes('Main-Class': mainClassName, 'Enable-Native-Access': 'ALL-UNNAMED', 'Add-Exports': 'java.desktop/com.sun.media.sound', 'Implementation-Version': project.version)
     }
     from(sourceSets.main.output)
     dependsOn configurations.runtimeClasspath
