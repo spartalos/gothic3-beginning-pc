@@ -10,7 +10,7 @@ import javax.microedition.lcdui.Font;
  */
 public final class TextLayer {
     /** Master switch (F10 "HD text"): new text on the screen buffer is recorded instead of rasterised. */
-    public static volatile boolean enabled = true;
+    public static volatile boolean enabled = false;
 
     /** One recorded string. Immutable. Coordinates are absolute buffer pixels: (x, y) = top-left of the text line. */
     public static final class Op {
