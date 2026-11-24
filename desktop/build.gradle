@@ -38,6 +38,10 @@ tasks.named('run') {
     doFirst {
         // Forward debug switches, e.g. ./gradlew :desktop:run -Dg3.media.debug=true
         System.properties.findAll { it.key.toString().startsWith('g3.') }.each { systemProperty it.key, it.value }
+        // MIDI SoundFont for dev runs: soundfont-out/ (gitignored, filled by scripts/fetch-soundfont.sh soundfont-out) unless -Dg3.soundfont is
+        // given; it then also wins over the audio.soundfont config key. Without it the music uses the JDK's crude default bank (docs/audio.md).
+        def sf = rootProject.file('soundfont-out')
+        if (System.getProperty('g3.soundfont') == null && sf.isDirectory()) systemProperty 'g3.soundfont', sf.path
     }
 }
 

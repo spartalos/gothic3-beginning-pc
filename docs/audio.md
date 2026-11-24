@@ -24,7 +24,8 @@ Pure-JDK implementation in `midp/src/main/java/javax/microedition/media/` (API) 
   `scripts/fetch-soundfont.sh`) into every app image (`soundfont/GeneralUser-GS.sf2` + licence text) and attaches it to the release next to the fat jar. The `.sf2` is
   never committed (gitignored). To use your own bank: drop a General MIDI `.sf2` into the app's `soundfont/` folder (or next to the jar), or set `audio.soundfont`
   to its path; delete/rename the bundled one to go back to the JDK bank. Local packaging with it: `scripts/fetch-soundfont.sh /some/dir`, then
-  `./gradlew :desktop:packageApp -PsoundfontDir=/some/dir` (also env `G3_SOUNDFONT_DIR`).
+  `./gradlew :desktop:packageApp -PsoundfontDir=/some/dir` (also env `G3_SOUNDFONT_DIR`). Dev runs: `scripts/fetch-soundfont.sh soundfont-out`
+  (gitignored); `./gradlew :desktop:run` then passes `-Dg3.soundfont=soundfont-out` unless you give your own `-Dg3.soundfont`.
 - AMR: the JDK cannot decode it. `AmrConverter` (buildtools) converts each `.amr` with ffmpeg
   (OpenCORE decoder; ffmpeg's native one fails on 6.7 kbps / SID frames; the app images bundle a minimal ffmpeg, see docs/byo-jar.md "Audio") to 22050 Hz mono WAV in
   `game/gen/resources/audio/` and writes `index.properties` (`sha1(original amr bytes)=audio/NN.wav`).
