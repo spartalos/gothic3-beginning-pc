@@ -145,7 +145,7 @@ changes, still excluding options-screen pauses). Music and SFX are untouched (mu
 ## HD text
 
 The game's text was rasterised (1-bit, no anti-aliasing) at the logical resolution and upscaled with the picture, which looks chunky. With `render.hdText = true`
-(F10 > Display > HD text, default off: the original pixel font) text drawn onto the **screen buffer** is not rasterised there. `Graphics.text` records it as a `gothic3.platform.TextLayer.Op`
+(F10 > Display > HD text, default on) text drawn onto the **screen buffer** is not rasterised there. `Graphics.text` records it as a `gothic3.platform.TextLayer.Op`
 (string, `Font`, colour, absolute position, effective clip) and the ops travel with the published frame (`FrameBuffer.publish(..., textOps)`, `GameCanvas.publishCurrent`),
 so they always belong to the pixels they were drawn with: canonical ticks, interpolated in-between frames and the 3D view's HUD layer alike. The presenter
 (`desktop/HdText`, called from `G3App.render` after the upscaled picture / the 3D scene and before the editor and F10 screens) draws them at window resolution:
@@ -186,7 +186,7 @@ or "Back to game" closes it. Fixed keys: it is not rebindable, and F10 is reject
 | | VSync (`window.vsync`) | live |
 | | Render mode (`render.mode`) | **restart** (the loop is chosen once at start) |
 | | Max FPS (`render.maxFps`: display rate / 60 / 120 / 144 / 165 / 240 / unlimited = 1000) | live (the game loop re-reads it every iteration) |
-| | HD text (`render.hdText`, default off) | live (see "HD text") |
+| | HD text (`render.hdText`, default on) | live (see "HD text") |
 | | FPS overlay (`debug.overlay`) | live (same as F3) |
 | 3D | View 2D/3D (`render.view`) | live (same as F5) |
 | | pitch, distance, fov, focus offset, lighting, shadows off/low/high, sun azimuth / elevation / strength, ambient, surround, fog, houses and walls (`render3d.*`) | live: written to a private tune file that `Renderer3D` re-reads (`Renderer3D.reloadSettings`, the `-Dg3.render3d.tune` mechanism), throttled to one rebuild per 120 ms. Not available when you pass your own `-Dg3.render3d.tune` (then use F6) |
