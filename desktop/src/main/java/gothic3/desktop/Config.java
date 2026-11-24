@@ -209,6 +209,8 @@ public final class Config {
         // audio.volume: 0..100 master output level; audio.mute silences everything without changing the level
         {"audio.volume", "100"},
         {"audio.mute", "false"},
+        // audio.sfx: sound effects (the .amr sounds) on/off; off = music only. Live; --no-sfx forces off for the run. docs/audio.md
+        {"audio.sfx", "true"},
         // audio.enabled: answer to the game's startup "sound?" question (applied at start, like answering it); firstRun.done: the startup
         // questions (sound, then 2D/3D -> render.view) were answered and are skipped from now on. Set it to false to be asked again.
         {"audio.enabled", "true"},

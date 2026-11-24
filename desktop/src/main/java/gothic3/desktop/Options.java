@@ -12,6 +12,7 @@ public final class Options {
     public String view;                // preset: wide | tight | classic | WxH (config screen.preset)
     public String midlet = "g3.Gothic3Midlet";
     public boolean noAudio;
+    public boolean noSfx;
     public String jar;                 // --jar <path>: the user's own Gothic3-TheBeginning_s40v3a.jar (docs/byo-jar.md)
     public boolean rebuildGame;        // --rebuild-game: discard the built game cache and build again
     public boolean windowFrames;
@@ -54,6 +55,7 @@ public final class Options {
                 case "--midlet": o.midlet = a[++i]; break;
                 case "--window-frames": o.windowFrames = true; break;
                 case "--no-audio": o.noAudio = true; break;
+                case "--no-sfx": o.noSfx = true; break;
                 case "--jar": o.jar = a[++i]; break;
                 case "--rebuild-game": o.rebuildGame = true; break;
                 case "--render-mode": o.renderMode = a[++i]; break;
@@ -77,7 +79,7 @@ public final class Options {
                 case "--burst-after-tick": o.burstAfterTick = Long.parseLong(a[++i]); break;
                 case "--help":
                     System.out.println("Options: --frames-dir <dir> --frame-every <ms> --script <file> --exit-after <ms>\n"
-                            + "         --scale <n> --fullscreen --width <px> --height <px> --view wide|tight|classic|WxH --midlet <class> --no-audio\n"
+                            + "         --scale <n> --fullscreen --width <px> --height <px> --view wide|tight|classic|WxH --midlet <class> --no-audio --no-sfx\n"
                             + "         --jar <path to Gothic3-TheBeginning_s40v3a.jar> --rebuild-game\n"
                             + "         --view3d | --render-view 2d|3d (F5 toggles, F6 reloads render3d/tiles.properties)\n"
                             + "         --render-mode classic|interpolated --max-fps <n> --vsync on|off --overlay --perf-log stderr|<file>\n"

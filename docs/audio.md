@@ -46,3 +46,11 @@ The port makes music and effects play together (`// PORT:` edits in `Gothic3Midl
 `-Dg3.media.debug=true` logs each `createPlayer` (type, size) and each player start/stop/end/close with the number of started players per content type
 (`start audio/amr playing={audio/midi=1, audio/amr=1}` shows effects playing over the music) on stderr; unknown AMR data and a missing
 `audio/index.properties` always log a warning.
+
+## Music only (sound effects off)
+
+F10 > Audio > "Sound effects" (`audio.sfx`, default on; `--no-sfx` or `-Dg3.sfx.off=true` forces it off for the run) switches the effects off live while the
+background music keeps playing. It lives in the MIDP media layer only: every AMR (effect) player is wrapped in `SfxGateBackend`, which at each `play()` uses the
+real clip backend when effects are on and a `SilentBackend` timer when off (`PlayerFactory.setSfxEnabled`). Player states, positions and `endOfMedia` events are
+identical either way, so game logic and the determinism trace do not change. An effect already playing when the toggle is switched off finishes; later ones are silent.
+With `-Dg3.media.debug=true` each effect start logs `[media] sfx play via audio` or `via MUTED (sound effects off)`.

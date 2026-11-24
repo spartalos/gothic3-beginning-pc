@@ -173,7 +173,7 @@ or "Back to game" closes it. Fixed keys: it is not rebindable, and F10 is reject
 | Effects | HD-2D post-processing: preset (Off / Subtle / HD-2D / Custom), depth of field (mode, blur, focus, bands), bloom, SSAO, tone mapping, exposure / contrast / saturation / temperature / tint, grade / LUT, vignette, grain, chromatic aberration, sharpen, FXAA (`post.*`); 2D: upscaler, bloom, grade, vignette, grain, CRT (`post2d.*`) | live (read from the config every frame it changes; see docs/post.md). A preset writes all `post.*` keys, touching one switches the preset to Custom |
 | Keyboard | primary + secondary key for every MIDP key (`key.*`) | live |
 | Gamepad | primary + secondary button for every MIDP key (`pad.*`), left stick on/off, dead zone (`pad.stick.*`) | live |
-| Audio | master volume, mute | live: `PlayerFactory.setMasterVolume` sets the gain of every open WAV/AMR clip (`MASTER_GAIN`) and sends a MIDI master-volume SysEx to the shared synthesizer; `--no-audio` is unaffected |
+| Audio | master volume, mute, sound effects on/off (`audio.sfx`) | live: `PlayerFactory.setMasterVolume` sets the gain of every open WAV/AMR clip (`MASTER_GAIN`) and sends a MIDI master-volume SysEx to the shared synthesizer; `--no-audio` is unaffected |
 | Game | Back to game, Quit game (confirmation inside the panel) | |
 
 Each tab ends with "Reset this tab to defaults". Items that need a restart are marked "(restart)"; once one differs from its value at launch the footer shows
